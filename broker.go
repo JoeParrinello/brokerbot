@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -8,19 +9,29 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
 )
 
 var (
-	Token string
+	Token         string
+	FinnhubToken  string
+	finnhubClient *finnhub.DefaultApiService
+	auth          context.Context
 )
 
 func init() {
 	flag.StringVar(&Token, "t", "", "Bot Token")
+	flag.StringVar(&FinnhubToken, "finnhub", "", "Finnhub Token")
 	flag.Parse()
 }
 
 func main() {
+	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
+	auth = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
+		Key: FinnhubToken,
+	})
+
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
 		fmt.Println("error creating Discord session:", err)
@@ -69,5 +80,23 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	fmt.Println("Ticker:", ticker)
+	value, err := findTicker(ticker)
+	if err != nil {
+		fmt.Println("Error fetching ticker,", err)
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Error with Ticker: %s", ticker))
+		return
+	}
+	output := fmt.Sprintf("Last Ticker Price for %s: %f", ticker, value)
+	fmt.Println(output)
+	s.ChannelMessageSend(m.ChannelID, output)
+}
+
+func findTicker(ticker string) (float32, error) {
+	quote, _, err := finnhubClient.Quote(auth, ticker)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return quote.C, nil
 }

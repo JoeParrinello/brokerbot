@@ -113,7 +113,10 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	output := fmt.Sprintf("Last Ticker Price for %s: %f", ticker, value)
 	log.Println(output)
-	s.ChannelMessageSend(m.ChannelID, output)
+	_, err = s.ChannelMessageSend(m.ChannelID, output)
+	if err != nil {
+		log.Println("error sending message to discord", err)
+	}
 }
 
 func findTicker(ticker string) (float32, error) {

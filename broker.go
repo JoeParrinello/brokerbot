@@ -30,6 +30,7 @@ func init() {
 
 func main() {
 	if Token == "" || FinnhubToken == "" {
+		fmt.Println("Token or FinnhubToken undefined from command line.")
 		success, finnhubToken, discordToken := getSecrets()
 		if !success {
 			fmt.Println("Getting tokens from the ENV failed, and flags not set.")
@@ -115,11 +116,13 @@ func findTicker(ticker string) (float32, error) {
 func getSecrets() (bool, string, string) {
 	success, finnhubKeyPath, discordKeyPath := getTokenPaths()
 	if !success {
+		fmt.Println("Failed getting the keypaths")
 		return false, "", ""
 	}
 	ctx := context.Background()
 	client, err := secretmanager.NewClient(ctx)
 	if err != nil {
+		fmt.Println("Failed creating secret manager client,", err)
 		return false, "", ""
 	}
 
@@ -134,10 +137,12 @@ func getSecrets() (bool, string, string) {
 	// Call the API.
 	finnhubResult, err := client.AccessSecretVersion(ctx, finnhubRequest)
 	if err != nil {
+		fmt.Println("Failed Getting the Finnhub Key", err)
 		return false, "", ""
 	}
 	discordResult, err := client.AccessSecretVersion(ctx, discordRequest)
 	if err != nil {
+		fmt.Println("Failed Getting the Discord Key:", err)
 		return false, "", ""
 	}
 

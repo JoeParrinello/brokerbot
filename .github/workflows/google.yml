@@ -43,12 +43,12 @@ jobs:
     # Push the Docker image to Google Container Registry
     - name: Publish
       run: |-
-        docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+        docker push "gcr.io/$PROJECT_ID/$IMAGE"
 
     - name: Deploy
       uses: google-github-actions/deploy-cloudrun@main
       with:
         credentials: ${{ secrets.GKE_SA_KEY }}
-        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:${{env.GITHUB_SHA}}
+        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:latest
         service: ${{env.IMAGE}}-service
         env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}}

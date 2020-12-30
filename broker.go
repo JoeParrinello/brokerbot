@@ -27,6 +27,11 @@ func init() {
 }
 
 func main() {
+	if Token == "" || FinnhubToken == "" {
+		fmt.Println("Tokens aren't specified")
+		return
+	}
+
 	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
 	auth = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
 		Key: FinnhubToken,

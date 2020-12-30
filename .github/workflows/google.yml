@@ -49,6 +49,6 @@ jobs:
       uses: google-github-actions/deploy-cloudrun@main
       with:
         credentials: ${{ secrets.GKE_SA_KEY }}
-        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:latest
+        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}
         service: ${{env.IMAGE}}-service
         env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}}

@@ -1,11 +1,4 @@
 # This workflow will build a docker container and publish it to Google Container Registry.
-#
-# To configure this workflow:
-#
-# 1. Set up secrets in your workspace: GKE_PROJECT with the name of the project
-#
-# For more support on how to run the workflow, please visit https://github.com/google-github-actions/setup-gcloud/tree/master/example-workflows/gke
-
 name: Build and Deploy to Google Container Registry
 
 on:
@@ -56,5 +49,5 @@ jobs:
       uses: google-github-actions/deploy-cloudrun@main
       with:
         credentials: ${{ secrets.GKE_SA_KEY }}
-        image: "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
-        service: ${{ secrets.GKE_PROJECT }}
+        image: gcr.io/${{PROJECT_ID}}/${{IMAGE}}:${{GITHUB_SHA}}
+        service: ${{IMAGE}}-service

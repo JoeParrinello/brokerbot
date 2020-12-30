@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -30,11 +32,10 @@ func init() {
 
 func main() {
 	if Token == "" || FinnhubToken == "" {
-		fmt.Println("Token or FinnhubToken undefined from command line.")
+		log.Println("Token or FinnhubToken undefined from command line.")
 		success, finnhubToken, discordToken := getSecrets()
 		if !success {
-			fmt.Println("Getting tokens from the ENV failed, and flags not set.")
-			return
+			log.Fatalln("Getting tokens from the ENV failed, and flags not set.")
 		}
 		FinnhubToken, Token = finnhubToken, discordToken
 	}
@@ -46,8 +47,7 @@ func main() {
 
 	dg, err := discordgo.New("Bot " + Token)
 	if err != nil {
-		fmt.Println("error creating Discord session:", err)
-		return
+		log.Fatalln("error creating Discord session:", err)
 	}
 
 	dg.AddHandler(handleMessage)
@@ -58,16 +58,29 @@ func main() {
 	// Open a websocket connection to Discord and begin listening.
 	err = dg.Open()
 	if err != nil {
-		fmt.Println("error opening connection,", err)
-		return
+		log.Fatalln("error opening discord connection,", err)
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("defaulting to port %s", port)
+	}
+
+	log.Printf("listening on port %s", port)
+	l, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		log.Fatalln(err)
 	}
 
 	// Wait here until terminal signal is received.
-	fmt.Println("Bot is now running...")
+	log.Println("Bot is now running...")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 	<-sc
 
+	// Cleanly close the listening server.
+	l.Close()
 	// Cleanly close the Discord session.
 	dg.Close()
 }
@@ -94,12 +107,12 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	value, err := findTicker(ticker)
 	if err != nil {
-		fmt.Println("Error fetching ticker,", err)
 		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Error with Ticker: %s", ticker))
+		log.Fatalln("error fetching ticker:", ticker, err)
 		return
 	}
 	output := fmt.Sprintf("Last Ticker Price for %s: %f", ticker, value)
-	fmt.Println(output)
+	log.Println(output)
 	s.ChannelMessageSend(m.ChannelID, output)
 }
 
@@ -116,13 +129,13 @@ func findTicker(ticker string) (float32, error) {
 func getSecrets() (bool, string, string) {
 	success, finnhubKeyPath, discordKeyPath := getTokenPaths()
 	if !success {
-		fmt.Println("Failed getting the keypaths")
+		log.Println("Failed getting the keypaths")
 		return false, "", ""
 	}
 	ctx := context.Background()
 	client, err := secretmanager.NewClient(ctx)
 	if err != nil {
-		fmt.Println("Failed creating secret manager client,", err)
+		log.Println("Failed creating secret manager client,", err)
 		return false, "", ""
 	}
 
@@ -137,12 +150,12 @@ func getSecrets() (bool, string, string) {
 	// Call the API.
 	finnhubResult, err := client.AccessSecretVersion(ctx, finnhubRequest)
 	if err != nil {
-		fmt.Println("Failed Getting the Finnhub Key", err)
+		log.Println("Failed Getting the Finnhub Key", err)
 		return false, "", ""
 	}
 	discordResult, err := client.AccessSecretVersion(ctx, discordRequest)
 	if err != nil {
-		fmt.Println("Failed Getting the Discord Key:", err)
+		log.Println("Failed Getting the Discord Key:", err)
 		return false, "", ""
 	}
 

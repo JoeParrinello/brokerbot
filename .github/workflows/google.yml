@@ -13,6 +13,8 @@ on:
     types: [created]
 
 env:
+  GKE_CLUSTER: cluster-1
+  GKE_ZONE: us-central1-c
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
   IMAGE: brokerbot
 
@@ -24,6 +26,17 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    
+    # Setup gcloud CLI
+    - uses: google-github-actions/setup-gcloud@v0.2.0
+      with:
+        service_account_key: ${{ secrets.GKE_SA_KEY }}
+        project_id: ${{ secrets.GKE_PROJECT }}
+        
+    # Configure Docker to use the gcloud command-line tool as a credential
+    # helper for authentication
+    - run: |-
+        gcloud --quiet auth configure-docker
 
     # Build the Docker image
     - name: Build
@@ -38,3 +51,10 @@ jobs:
     - name: Publish
       run: |-
         docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+
+    - name: Deploy
+      uses: google-github-actions/deploy-cloudrun@main
+      with:
+        credentials: ${{ secrets.GKE_SA_KEY }}
+        image: "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+        service: ${{ secrets.GKE_PROJECT }}

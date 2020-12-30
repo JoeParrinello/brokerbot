@@ -51,3 +51,4 @@ jobs:
         credentials: ${{ secrets.GKE_SA_KEY }}
         image: gcr.io/${{PROJECT_ID}}/${{IMAGE}}:${{GITHUB_SHA}}
         service: ${{IMAGE}}-service
+        env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}}

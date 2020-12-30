@@ -9,8 +9,10 @@ import (
 	"strings"
 	"syscall"
 
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
+	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
 var (
@@ -28,8 +30,12 @@ func init() {
 
 func main() {
 	if Token == "" || FinnhubToken == "" {
-		fmt.Println("Tokens aren't specified")
-		return
+		success, finnhubToken, discordToken := getSecrets()
+		if !success {
+			fmt.Println("Getting tokens from the ENV failed, and flags not set.")
+			return
+		}
+		FinnhubToken, Token = finnhubToken, discordToken
 	}
 
 	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
@@ -104,4 +110,42 @@ func findTicker(ticker string) (float32, error) {
 	}
 
 	return quote.C, nil
+}
+
+func getSecrets() (bool, string, string) {
+	success, finnhubKeyPath, discordKeyPath := getTokenPaths()
+	if !success {
+		return false, "", ""
+	}
+	ctx := context.Background()
+	client, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return false, "", ""
+	}
+
+	// Build the requests.
+	finnhubRequest := &secretmanagerpb.AccessSecretVersionRequest{
+		Name: finnhubKeyPath,
+	}
+	discordRequest := &secretmanagerpb.AccessSecretVersionRequest{
+		Name: discordKeyPath,
+	}
+
+	// Call the API.
+	finnhubResult, err := client.AccessSecretVersion(ctx, finnhubRequest)
+	if err != nil {
+		return false, "", ""
+	}
+	discordResult, err := client.AccessSecretVersion(ctx, discordRequest)
+	if err != nil {
+		return false, "", ""
+	}
+
+	return true, string(finnhubResult.GetPayload().GetData()), string(discordResult.GetPayload().GetData())
+}
+
+func getTokenPaths() (bool, string, string) {
+	finnhubKeyPath, finnhubPresent := os.LookupEnv("FINNHUB_KEY_PATH")
+	discordKeyPath, discordPresent := os.LookupEnv("DISCORD_KEY_PATH")
+	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
 }

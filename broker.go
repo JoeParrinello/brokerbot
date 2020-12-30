@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -26,7 +27,17 @@ func main() {
 		return
 	}
 
-	dg.AddHandler(respond)
+	dg.AddHandler(handleMessage)
+
+	// We only care about receiving message events.
+	dg.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages)
+
+	// Open a websocket connection to Discord and begin listening.
+	err = dg.Open()
+	if err != nil {
+		fmt.Println("error opening connection,", err)
+		return
+	}
 
 	// Wait here until terminal signal is received.
 	fmt.Println("Bot is now running...")
@@ -38,6 +49,25 @@ func main() {
 	dg.Close()
 }
 
-func respond(s *discordgo.Session, m *discordgo.MessageCreate) {
-	fmt.Println("Hello World!")
+func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Ignore all messages created by the bot itself
+	// This isn't required in this specific example but it's a good practice.
+	if m.Author.ID == s.State.User.ID {
+		return
+	}
+
+	trimmed := strings.TrimSpace(m.Content)
+
+	// If not in the format "!stonks <ticker>", give up.
+	if !strings.HasPrefix(trimmed, "!stonks ") {
+		return
+	}
+
+	ticker := strings.TrimPrefix(m.Content, "!stonks ")
+
+	if ticker == "" {
+		return
+	}
+
+	fmt.Println("Ticker:", ticker)
 }

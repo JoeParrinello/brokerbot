@@ -5,8 +5,8 @@ FROM golang
 # Copy the local package files to the container's workspace
 ADD . /go/src/hardorange/brokerbot
 
-
 # Build the brokerbot command inside the container.
+RUN go get /go/src/hardorange/brokerbot
 RUN go install /go/src/hardorange/brokerbot
 
 # Run the brokerbot

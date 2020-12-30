@@ -79,16 +79,19 @@ func main() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
 	<-sc
 
+	log.Println("Bot is closing...")
 	// Cleanly close the listening server.
 	l.Close()
 	// Cleanly close the Discord session.
 	dg.Close()
+	log.Println("Bot is closed")
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
+		log.Println("Ignore the bot's message itself")
 		return
 	}
 
@@ -96,12 +99,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// If not in the format "!stonks <ticker>", give up.
 	if !strings.HasPrefix(trimmed, "!stonks ") {
+		log.Println("Ignoring non-prefixed message")
 		return
 	}
 
 	ticker := strings.TrimPrefix(m.Content, "!stonks ")
 
 	if ticker == "" {
+		log.Println("Empty stock ticker")
 		return
 	}
 
@@ -123,6 +128,7 @@ func findTicker(ticker string) (float32, error) {
 	quote, _, err := finnhubClient.Quote(auth, ticker)
 
 	if err != nil {
+		log.Println("Error getting quote")
 		return 0, err
 	}
 
@@ -162,10 +168,12 @@ func getSecrets() (bool, string, string) {
 		return false, "", ""
 	}
 
+	log.Println("Got the keys from secret manager")
 	return true, string(finnhubResult.GetPayload().GetData()), string(discordResult.GetPayload().GetData())
 }
 
 func getTokenPaths() (bool, string, string) {
+	log.Println("Fetching key paths from env files")
 	finnhubKeyPath, finnhubPresent := os.LookupEnv("FINNHUB_KEY_PATH")
 	discordKeyPath, discordPresent := os.LookupEnv("DISCORD_KEY_PATH")
 	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath

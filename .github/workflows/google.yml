@@ -31,24 +31,19 @@ jobs:
     - run: |-
         gcloud --quiet auth configure-docker
 
-    # Build the Docker image
-    - name: Build
+    - name: Build and Push Container
       run: |-
-        docker build \
-          --tag "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA" \
-          --build-arg GITHUB_SHA="$GITHUB_SHA" \
-          --build-arg GITHUB_REF="$GITHUB_REF" \
-          .
-
-    # Push the Docker image to Google Container Registry
-    - name: Publish
-      run: |-
-        docker push "gcr.io/$PROJECT_ID/$IMAGE"
-
-    - name: Deploy
-      uses: google-github-actions/deploy-cloudrun@main
+        docker build -t gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:${{github.sha}} .
+        docker push gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:${{github.sha}}
+        
+    - name: Deploy to Cloud Run
+      id: deploy
+      uses: google-github-actions/deploy-cloudrun@v0.2.0
       with:
-        credentials: ${{ secrets.GKE_SA_KEY }}
-        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}
+        credentials: ${{secrets.GKE_SA_KEY}}
         service: ${{env.IMAGE}}-service
+        image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:${{github.sha}}
         env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}}
+
+    - name: Show Output
+      run: echo ${{steps.deploy.outputs.url}}

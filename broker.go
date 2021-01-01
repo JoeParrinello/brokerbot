@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -61,6 +61,8 @@ func main() {
 		log.Fatalln("error opening discord connection,", err)
 	}
 
+	http.HandleFunc("/", handleDefaultPort)
+	
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -68,10 +70,15 @@ func main() {
 	}
 
 	log.Printf("listening on port %s", port)
-	l, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Println("Bot is closing...")
+		// Cleanly close the listening server.
+		l.Close()
+		// Cleanly close the Discord session.
+		dg.Close()
+		log.Println("Bot is closed")
+		log.Fatal(err)
+        }
 
 	// Wait here until terminal signal is received.
 	log.Println("Bot is now running...")
@@ -85,6 +92,11 @@ func main() {
 	// Cleanly close the Discord session.
 	dg.Close()
 	log.Println("Bot is closed")
+}
+
+func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
+	log.Println("Heartbeat")
+	fmt.Fprintln(w, "Hello World!")
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {

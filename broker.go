@@ -7,9 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"

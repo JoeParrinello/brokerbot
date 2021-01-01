@@ -70,28 +70,14 @@ func main() {
 	}
 
 	log.Printf("listening on port %s", port)
+	log.Println("Bot is now running...")
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Println("Bot is closing...")
-		// Cleanly close the listening server.
-		l.Close()
 		// Cleanly close the Discord session.
 		dg.Close()
 		log.Println("Bot is closed")
 		log.Fatal(err)
         }
-
-	// Wait here until terminal signal is received.
-	log.Println("Bot is now running...")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
-	<-sc
-
-	log.Println("Bot is closing...")
-	// Cleanly close the listening server.
-	l.Close()
-	// Cleanly close the Discord session.
-	dg.Close()
-	log.Println("Bot is closed")
 }
 
 func handleDefaultPort(w http.ResponseWriter, r *http.Request) {

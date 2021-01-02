@@ -129,7 +129,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		sendMessage(s, m.ChannelID, msg)
 		if err != nil {
-			log.Prinf("failed to send message %q to discord", msg, err)
+			log.Printf("failed to send message %q to discord", msg, err)
 		}
 		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
@@ -141,15 +141,15 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		msg := fmt.Sprintf("No Such Ticker: %s", ticker)
 		sendMessage(s, m.ChannelID, msg)
 		if err != nil {
-			log.Prinf("failed to send message %q to discord", msg, err)
+			log.Printf("failed to send message %q to discord", msg, err)
 		}
 	}
 
-	msg := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
-	log.Println(output)
+	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
+	log.Println(msg)
 	_, err = sendMessage(s, m.ChannelID, msg)
 	if err != nil {
-		log.Prinf("failed to send message %q to discord", msg, err)
+		log.Printf("failed to send message %q to discord", msg, err)
 	}
 }
 

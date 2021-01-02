@@ -143,6 +143,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			log.Printf("failed to send message %q to discord: %v", msg, err)
 		}
+		return
 	}
 
 	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)

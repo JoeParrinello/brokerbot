@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"
@@ -17,8 +18,9 @@ import (
 )
 
 var (
-	discordToken string
-	finnhubToken string
+	discordToken   string
+	finnhubToken   string
+	cryptoExchange string
 
 	ctx context.Context
 
@@ -32,6 +34,7 @@ var (
 func init() {
 	flag.StringVar(&discordToken, "t", "", "Discord Token")
 	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
+	flag.StringVar(&cryptoExchange, "exchange", "GEMINI", "Crypto Exchange")
 	flag.BoolVar(&test, "test", false, "Run in test mode")
 	flag.Parse()
 }
@@ -115,6 +118,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	ticker := strings.TrimPrefix(msg, "!stonks ")
+	ticker = strings.ToUpper(ticker)
 
 	if ticker == "" {
 		// TODO: Send a help message to the user.
@@ -123,11 +127,12 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	/* Serving */
+	log.Printf("Processing request for: %s", ticker)
 
-	value, err := getQuoteForTicker(ticker)
+	value, err := getQuoteForStockTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
+		log.Printf(fmt.Sprintf("%s: %v", msg, err))
 		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
 			log.Printf("failed to send message %q to discord: %v", msg, err)
 		}
@@ -136,12 +141,25 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Finnhub returns an empty quote for non-existant tickers.
 	if value == 0.0 {
-		// TODO: Assume it is a crypto symbol at this point?
-		msg := fmt.Sprintf("No Such Ticker: %s", ticker)
-		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
-			log.Printf("failed to send message %q to discord: %v", msg, err)
+		var err error
+		value, err = getQuoteForCryptoAsset(ticker)
+		if err != nil {
+			msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
+			log.Printf(fmt.Sprintf("%s: %v", msg, err))
+			if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
+				log.Printf("failed to send message %q to discord: %v", msg, err)
+			}
+			return
 		}
-		return
+
+		if value == 0.0 {
+			msg := fmt.Sprintf("No Such Asset: %s", ticker)
+			log.Printf(msg)
+			if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
+				log.Printf("failed to send message %q to discord: %v", msg, err)
+			}
+			return
+		}
 	}
 
 	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
@@ -151,12 +169,29 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func getQuoteForTicker(ticker string) (float32, error) {
+func getQuoteForStockTicker(ticker string) (float32, error) {
 	quote, _, err := finnhubClient.Quote(ctx, ticker)
 	if err != nil {
 		return 0, err
 	}
 	return quote.C, nil
+}
+
+func getQuoteForCryptoAsset(asset string) (float32, error) {
+	// Finnhub takes symbols in the format "GEMINI:btcusd"
+	formattedAsset := cryptoExchange + ":" + strings.ToLower(asset) + "usd"
+	quote, _, err := finnhubClient.CryptoCandles(ctx,
+		/* symbol= */ formattedAsset,
+		/* resolution= */ "1", // 1 = 1 hour
+		/* from= */ time.Now().Add(-1*time.Minute).Unix(),
+		/* to= */ time.Now().Unix())
+	if err != nil {
+		return 0, err
+	}
+	if len(quote.C) == 0 {
+		return 0, nil
+	}
+	return quote.C[0], nil
 }
 
 func getSecrets() (bool, string, string) {

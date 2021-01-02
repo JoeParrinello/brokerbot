@@ -119,13 +119,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	value, err := findTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		s.ChannelMessageSend(m.ChannelID, transformSendString(msg))
+		sendMessage(s, m.ChannelID, msg)
 		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
 	}
 	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(output)
-	_, err = s.ChannelMessageSend(m.ChannelID, transformSendString(output))
+	_, err = sendMessage(s, m.ChannelID, output)
 	if err != nil {
 		log.Println("failed to send message to discord", err)
 	}
@@ -183,9 +183,9 @@ func getTokenPaths() (bool, string, string) {
 	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
 }
 
-func transformSendString(s string) string {
+func sendMessage(s *discordgo.Session, channelID string, msg string) (*discordgo.Message, error) {
 	if test {
-		s = "TEST: " + s
+		msg = "TEST: " + msg
 	}
-	return s
+	return s.ChannelMessageSend(channelID, msg)
 }

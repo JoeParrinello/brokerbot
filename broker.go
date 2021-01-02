@@ -5,9 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
+	"unsafe"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"
@@ -16,14 +19,23 @@ import (
 )
 
 var (
-	discordToken string
-	finnhubToken string
-	test         bool
+	discordToken  string
+	finnhubToken  string
+	messagePrefix string
+	test          bool
 
 	ctx context.Context
 
 	finnhubClient *finnhub.DefaultApiService
 	discordClient *discordgo.Session
+	src           = rand.NewSource(time.Now().UnixNano())
+)
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
 func init() {
@@ -34,6 +46,11 @@ func init() {
 }
 
 func main() {
+	if test {
+		messagePrefix = getRandString(6)
+		log.Printf("test mode activated. message prefix: %s", messagePrefix)
+	}
+
 	log.Printf("DiscordBot starting up")
 	initTokens()
 
@@ -185,7 +202,25 @@ func getTokenPaths() (bool, string, string) {
 
 func sendMessage(s *discordgo.Session, channelID string, msg string) (*discordgo.Message, error) {
 	if test {
-		msg = "TEST: " + msg
+		msg = "TEST(" + messagePrefix + "): " + msg
 	}
 	return s.ChannelMessageSend(channelID, msg)
+}
+
+func getRandString(length int) string {
+	b := make([]byte, length)
+	// A src.Int63() generates 63 random bits, enough for letterIdxMax characters!
+	for i, cache, remain := length-1, src.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = src.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return *(*string)(unsafe.Pointer(&b))
 }

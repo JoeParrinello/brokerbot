@@ -127,11 +127,10 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	value, err := getQuoteForTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		sendMessage(s, m.ChannelID, msg)
-		if err != nil {
+		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
+		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
 			log.Printf("failed to send message %q to discord: %v", msg, err)
 		}
-		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
 	}
 
@@ -139,8 +138,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if value == 0.0 {
 		// TODO: Assume it is a crypto symbol at this point?
 		msg := fmt.Sprintf("No Such Ticker: %s", ticker)
-		sendMessage(s, m.ChannelID, msg)
-		if err != nil {
+		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
 			log.Printf("failed to send message %q to discord: %v", msg, err)
 		}
 		return
@@ -148,8 +146,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(msg)
-	_, err = sendMessage(s, m.ChannelID, msg)
-	if err != nil {
+	if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
 		log.Printf("failed to send message %q to discord: %v", msg, err)
 	}
 }

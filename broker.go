@@ -97,11 +97,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// Prevent the bot from talking to itself.
 		return
 	}
-	if !strings.HasPrefix(strings.TrimSpace(m.Content), "!stonks ") {
+
+	msg := strings.TrimSpace(m.Content)
+
+	if !strings.HasPrefix(msg, "!stonks ") {
 		return
 	}
 
-	ticker := strings.TrimPrefix(m.Content, "!stonks ")
+	ticker := strings.TrimPrefix(msg, "!stonks ")
 
 	if ticker == "" {
 		// TODO: Send a help message to the user.
@@ -113,9 +116,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	value, err := findTicker(ticker)
 	if err != nil {
-		msg := fmt.Sprintf("failed to get quote for ticker %q: %v", ticker, err)
+		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		s.ChannelMessageSend(m.ChannelID, msg)
-		log.Fatal(msg)
+		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
 	}
 	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)

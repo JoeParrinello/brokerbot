@@ -124,22 +124,34 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	/* Serving */
 
-	value, err := findTicker(ticker)
+	value, err := getQuoteForTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		sendMessage(s, m.ChannelID, msg)
 		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
+		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
+			log.Printf("failed to send message %q to discord: %v", msg, err)
+		}
 		return
 	}
-	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
-	log.Println(output)
-	_, err = sendMessage(s, m.ChannelID, output)
-	if err != nil {
-		log.Println("failed to send message to discord", err)
+
+	// Finnhub returns an empty quote for non-existant tickers.
+	if value == 0.0 {
+		// TODO: Assume it is a crypto symbol at this point?
+		msg := fmt.Sprintf("No Such Ticker: %s", ticker)
+		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
+			log.Printf("failed to send message %q to discord: %v", msg, err)
+		}
+		return
+	}
+
+	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
+	log.Println(msg)
+	if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
+		log.Printf("failed to send message %q to discord: %v", msg, err)
 	}
 }
 
-func findTicker(ticker string) (float32, error) {
+func getQuoteForTicker(ticker string) (float32, error) {
 	quote, _, err := finnhubClient.Quote(ctx, ticker)
 	if err != nil {
 		return 0, err

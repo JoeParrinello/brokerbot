@@ -18,6 +18,7 @@ import (
 var (
 	discordToken string
 	finnhubToken string
+	test         bool
 
 	ctx context.Context
 
@@ -28,6 +29,7 @@ var (
 func init() {
 	flag.StringVar(&discordToken, "t", "", "Discord Token")
 	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
+	flag.BoolVar(&test, "test", false, "Run in test mode")
 	flag.Parse()
 }
 
@@ -117,13 +119,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	value, err := findTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		s.ChannelMessageSend(m.ChannelID, msg)
+		s.ChannelMessageSend(m.ChannelID, transformSendString(msg))
 		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
 	}
 	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(output)
-	_, err = s.ChannelMessageSend(m.ChannelID, output)
+	_, err = s.ChannelMessageSend(m.ChannelID, transformSendString(output))
 	if err != nil {
 		log.Println("failed to send message to discord", err)
 	}
@@ -179,4 +181,11 @@ func getTokenPaths() (bool, string, string) {
 	finnhubKeyPath, finnhubPresent := os.LookupEnv("FINNHUB_KEY_PATH")
 	discordKeyPath, discordPresent := os.LookupEnv("DISCORD_KEY_PATH")
 	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
+}
+
+func transformSendString(s string) string {
+	if test {
+		s = "TEST: " + s
+	}
+	return s
 }

@@ -133,9 +133,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
-			log.Printf("failed to send message %q to discord: %v", msg, err)
-		}
+		sendMessage(s, m.ChannelID, msg)
 		return
 	}
 
@@ -148,27 +146,21 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
 			log.Printf(fmt.Sprintf("%s: %v", msg, err))
-			if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
-				log.Printf("failed to send message %q to discord: %v", msg, err)
-			}
+			sendMessage(s, m.ChannelID, msg)
 			return
 		}
 
 		if value == 0.0 {
 			msg := fmt.Sprintf("No Such Asset: %s", ticker)
 			log.Printf(msg)
-			if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
-				log.Printf("failed to send message %q to discord: %v", msg, err)
-			}
+			sendMessage(s, m.ChannelID, msg)
 			return
 		}
 	}
 
 	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(msg)
-	if _, err := sendMessage(s, m.ChannelID, msg); err != nil {
-		log.Printf("failed to send message %q to discord: %v", msg, err)
-	}
+	sendMessage(s, m.ChannelID, msg)
 }
 
 func getQuoteForStockTicker(ticker string) (float32, error) {
@@ -240,9 +232,13 @@ func getTokenPaths() (bool, string, string) {
 	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
 }
 
-func sendMessage(s *discordgo.Session, channelID string, msg string) (*discordgo.Message, error) {
+func sendMessage(s *discordgo.Session, channelID string, msg string) *discordgo.Message {
 	if test {
 		msg = fmt.Sprintf("TEST(%s): %s", messagePrefix, msg)
 	}
-	return s.ChannelMessageSend(channelID, msg)
+	message, err := s.ChannelMessageSend(channelID, msg)
+	if err != nil {
+		log.Printf("failed to send message %q to discord: %v", msg, err)
+	}
+	return message
 }

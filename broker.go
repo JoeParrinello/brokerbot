@@ -12,6 +12,7 @@ import (
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
+	"github.com/zokypesch/proto-lib/utils"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
@@ -23,17 +24,26 @@ var (
 
 	finnhubClient *finnhub.DefaultApiService
 	discordClient *discordgo.Session
+
+	messagePrefix string
+	test          bool
 )
 
 func init() {
 	flag.StringVar(&discordToken, "t", "", "Discord Token")
 	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
+	flag.BoolVar(&test, "test", false, "Run in test mode")
 	flag.Parse()
 }
 
 func main() {
 	log.Printf("DiscordBot starting up")
 	initTokens()
+
+	if test {
+		messagePrefix = utils.RandStringBytesMaskImprSrcUnsafe(6)
+		log.Printf("test mode activated. message prefix: %s", messagePrefix)
+	}
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
 		Key: finnhubToken,
@@ -117,7 +127,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	value, err := getQuoteForTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		s.ChannelMessageSend(m.ChannelID, msg)
+		sendMessage(s, m.ChannelID, msg)
 		log.Fatal(fmt.Sprintf("%s: %v", msg, err))
 		return
 	}
@@ -134,7 +144,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(output)
-	_, err = s.ChannelMessageSend(m.ChannelID, output)
+	_, err = sendMessage(s, m.ChannelID, output)
 	if err != nil {
 		log.Println("failed to send message to discord", err)
 	}
@@ -190,4 +200,11 @@ func getTokenPaths() (bool, string, string) {
 	finnhubKeyPath, finnhubPresent := os.LookupEnv("FINNHUB_KEY_PATH")
 	discordKeyPath, discordPresent := os.LookupEnv("DISCORD_KEY_PATH")
 	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
+}
+
+func sendMessage(s *discordgo.Session, channelID string, msg string) (*discordgo.Message, error) {
+	if test {
+		msg = fmt.Sprintf("TEST(%s): %s", messagePrefix, msg)
+	}
+	return s.ChannelMessageSend(channelID, msg)
 }

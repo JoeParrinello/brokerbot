@@ -17,15 +17,16 @@ import (
 )
 
 var (
-	discordToken  string
-	finnhubToken  string
-	messagePrefix string
-	test          bool
+	discordToken string
+	finnhubToken string
 
 	ctx context.Context
 
 	finnhubClient *finnhub.DefaultApiService
 	discordClient *discordgo.Session
+
+	messagePrefix string
+	test          bool
 )
 
 func init() {
@@ -36,13 +37,13 @@ func init() {
 }
 
 func main() {
+	log.Printf("DiscordBot starting up")
+	initTokens()
+
 	if test {
 		messagePrefix = utils.RandStringBytesMaskImprSrcUnsafe(6)
 		log.Printf("test mode activated. message prefix: %s", messagePrefix)
 	}
-
-	log.Printf("DiscordBot starting up")
-	initTokens()
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
 		Key: finnhubToken,
@@ -192,7 +193,7 @@ func getTokenPaths() (bool, string, string) {
 
 func sendMessage(s *discordgo.Session, channelID string, msg string) (*discordgo.Message, error) {
 	if test {
-		msg = "TEST(" + messagePrefix + "): " + msg
+		msg = fmt.Sprintf("TEST(%s): %s", messagePrefix, msg)
 	}
 	return s.ChannelMessageSend(channelID, msg)
 }

@@ -16,66 +16,74 @@ import (
 )
 
 var (
-	Token         string
-	FinnhubToken  string
+	discordToken string
+	finnhubToken string
+
+	ctx context.Context
+
 	finnhubClient *finnhub.DefaultApiService
-	auth          context.Context
+	discordClient *discordgo.Session
 )
 
 func init() {
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.StringVar(&FinnhubToken, "finnhub", "", "Finnhub Token")
+	flag.StringVar(&discordToken, "t", "", "Discord Token")
+	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
 	flag.Parse()
 }
 
 func main() {
-	if Token == "" || FinnhubToken == "" {
-		log.Println("Token or FinnhubToken undefined from command line.")
-		success, finnhubToken, discordToken := getSecrets()
-		if !success {
-			log.Fatalln("Getting tokens from the ENV failed, and flags not set.")
-		}
-		FinnhubToken, Token = finnhubToken, discordToken
-	}
+	log.Printf("DiscordBot starting up")
+	initTokens()
 
-	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
-	auth = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
-		Key: FinnhubToken,
+	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
+		Key: finnhubToken,
 	})
 
-	dg, err := discordgo.New("Bot " + Token)
+	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
+
+	var err error
+	discordClient, err = discordgo.New("Bot " + discordToken)
 	if err != nil {
-		log.Fatalln("error creating Discord session:", err)
+		log.Fatalf("failed to create Discord client: %v", err)
 	}
 
-	dg.AddHandler(handleMessage)
-
-	// We only care about receiving message events.
-	dg.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages)
+	discordClient.AddHandler(handleMessage)
+	discordClient.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages)
 
 	// Open a websocket connection to Discord and begin listening.
-	err = dg.Open()
-	if err != nil {
-		log.Fatalln("error opening discord connection,", err)
+	if err = discordClient.Open(); err != nil {
+		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
 	http.HandleFunc("/", handleDefaultPort)
-	
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 		log.Printf("defaulting to port %s", port)
 	}
 
-	log.Printf("listening on port %s", port)
-	log.Println("Bot is now running...")
+	log.Printf("DiscordBot ready to serve on port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Println("Bot is closing...")
-		// Cleanly close the Discord session.
-		dg.Close()
-		log.Println("Bot is closed")
+		log.Printf("DiscordBot shutting down")
+		discordClient.Close()
 		log.Fatal(err)
-        }
+	}
+}
+
+func initTokens() {
+	if discordToken != "" && finnhubToken != "" {
+		log.Printf("API tokens have been passed via command-line flags.")
+		return
+	}
+
+	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
+
+	var ok bool
+	ok, finnhubToken, discordToken = getSecrets()
+	if !ok {
+		log.Fatalf("API tokens not found in ENV, aborting...")
+	}
 }
 
 func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
@@ -84,50 +92,44 @@ func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// Ignore all messages created by the bot itself
-	// This isn't required in this specific example but it's a good practice.
+	/* Validation */
 	if m.Author.ID == s.State.User.ID {
-		log.Println("Ignore the bot's message itself")
 		return
 	}
-
-	trimmed := strings.TrimSpace(m.Content)
-
-	// If not in the format "!stonks <ticker>", give up.
-	if !strings.HasPrefix(trimmed, "!stonks ") {
-		log.Println("Ignoring non-prefixed message")
+	if !strings.HasPrefix(strings.TrimSpace(m.Content), "!stonks ") {
 		return
 	}
 
 	ticker := strings.TrimPrefix(m.Content, "!stonks ")
 
 	if ticker == "" {
+		// TODO: Send a help message to the user.
 		log.Println("Empty stock ticker")
 		return
 	}
 
+	/* Serving */
+
 	value, err := findTicker(ticker)
 	if err != nil {
-		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Error with Ticker: %s", ticker))
-		log.Fatalln("error fetching ticker:", ticker, err)
+		msg := fmt.Sprintf("failed to get quote for ticker %q: %v", ticker, err)
+		s.ChannelMessageSend(m.ChannelID, msg)
+		log.Fatal(msg)
 		return
 	}
-	output := fmt.Sprintf("Last Ticker Price for %s: %f", ticker, value)
+	output := fmt.Sprintf("Latest quote for %s: $%f", ticker, value)
 	log.Println(output)
 	_, err = s.ChannelMessageSend(m.ChannelID, output)
 	if err != nil {
-		log.Println("error sending message to discord", err)
+		log.Println("failed to send message to discord", err)
 	}
 }
 
 func findTicker(ticker string) (float32, error) {
-	quote, _, err := finnhubClient.Quote(auth, ticker)
-
+	quote, _, err := finnhubClient.Quote(ctx, ticker)
 	if err != nil {
-		log.Println("Error getting quote")
 		return 0, err
 	}
-
 	return quote.C, nil
 }
 

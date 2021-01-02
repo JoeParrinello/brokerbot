@@ -94,6 +94,7 @@ func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	/* Validation */
 	if m.Author.ID == s.State.User.ID {
+		// Prevent the bot from talking to itself.
 		return
 	}
 	if !strings.HasPrefix(strings.TrimSpace(m.Content), "!stonks ") {
@@ -117,7 +118,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Fatal(msg)
 		return
 	}
-	output := fmt.Sprintf("Latest quote for %s: $%f", ticker, value)
+	output := fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
 	log.Println(output)
 	_, err = s.ChannelMessageSend(m.ChannelID, output)
 	if err != nil {

@@ -139,6 +139,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// TODO(MatthewLavine): Query for stock and cryto quotes concurrently to speed things up.
+
 	// Finnhub returns an empty quote for non-existant tickers.
 	if value == 0.0 {
 		var err error

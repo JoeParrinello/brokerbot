@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strings"
@@ -129,7 +130,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	/* Serving */
 	log.Printf("Processing request for: %s", ticker)
 
-	value, err := getQuoteForStockTicker(ticker)
+	value, change, err := getQuoteForStockTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -158,17 +159,18 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	msgEmbed := createMessageEmbed(ticker, value)
+	msgEmbed := createMessageEmbed(ticker, value, change)
 	log.Printf("%+v", msgEmbed)
 	sendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
-func getQuoteForStockTicker(ticker string) (float32, error) {
+func getQuoteForStockTicker(ticker string) (float32, float32, error) {
 	quote, _, err := finnhubClient.Quote(ctx, ticker)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return quote.C, nil
+	dailyChangePercent := ((quote.C - quote.Pc) / quote.O) * 100
+	return quote.C, dailyChangePercent, nil
 }
 
 func getQuoteForCryptoAsset(asset string) (float32, error) {
@@ -240,8 +242,8 @@ func sendMessage(s *discordgo.Session, channelID string, msg string) *discordgo.
 	}
 	return message
 }
-
 func sendMessageEmbed(s *discordgo.Session, channelID string, msg *discordgo.MessageEmbed) *discordgo.Message {
+
 	message, err := s.ChannelMessageSendEmbed(channelID, msg)
 	if err != nil {
 		log.Printf("failed to send message %+v to discord: %v", msg, err)
@@ -249,15 +251,19 @@ func sendMessageEmbed(s *discordgo.Session, channelID string, msg *discordgo.Mes
 	return message
 }
 
-func createMessageEmbed(ticker string, value float32) *discordgo.MessageEmbed {
-	return createMessageEmbedWithPrefix(ticker, value, getMessagePrefix())
+func createMessageEmbed(ticker string, value float32, change float32) *discordgo.MessageEmbed {
+	return createMessageEmbedWithPrefix(ticker, value, change, getMessagePrefix())
 }
 
-func createMessageEmbedWithPrefix(ticker string, value float32, prefix string) *discordgo.MessageEmbed {
+func createMessageEmbedWithPrefix(ticker string, value float32, change float32, prefix string) *discordgo.MessageEmbed {
+	mesg := fmt.Sprintf("Latest Quote: $%.2f", value)
+	if !math.IsNaN(float64(change)) {
+		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, change)
+	}
 	return &discordgo.MessageEmbed{
 		Title:       ticker,
 		URL:         fmt.Sprintf("https://www.google.com/search?q=%s", ticker),
-		Description: fmt.Sprintf("Latest Quote: $%.2f", value),
+		Description: mesg,
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: prefix,
 		},

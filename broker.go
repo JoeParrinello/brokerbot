@@ -158,9 +158,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	msg = fmt.Sprintf("Latest quote for %s: $%.2f", ticker, value)
-	log.Println(msg)
-	sendMessage(s, m.ChannelID, msg)
+	msgEmbed := createMessageEmbed(ticker, value)
+	log.Println(msgEmbed)
+	sendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
 func getQuoteForStockTicker(ticker string) (float32, error) {
@@ -233,12 +233,36 @@ func getTokenPaths() (bool, string, string) {
 }
 
 func sendMessage(s *discordgo.Session, channelID string, msg string) *discordgo.Message {
-	if test {
-		msg = fmt.Sprintf("TEST(%s): %s", messagePrefix, msg)
-	}
+	msg = fmt.Sprintf("%s%s", getMessagePrefix(), msg)
 	message, err := s.ChannelMessageSend(channelID, msg)
 	if err != nil {
 		log.Printf("failed to send message %q to discord: %v", msg, err)
 	}
 	return message
+}
+
+func sendMessageEmbed(s *discordgo.Session, channelID string, msg *discordgo.MessageEmbed) *discordgo.Message {
+	message, err := s.ChannelMessageSendEmbed(channelID, msg)
+	if err != nil {
+		log.Printf("failed to send message %+v to discord: %v", msg, err)
+	}
+	return message
+}
+
+func createMessageEmbed(ticker string, value float32) *discordgo.MessageEmbed {
+	return createMessageEmbedWithPrefix(ticker, value, getMessagePrefix())
+}
+
+func createMessageEmbedWithPrefix(ticker string, value float32, prefix string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		Title:       ticker,
+		Description: fmt.Sprintf("%sLatest quote for %s: $%.2f", prefix, ticker, value),
+	}
+}
+
+func getMessagePrefix() string {
+	if test {
+		return fmt.Sprintf("TEST(%s): ", messagePrefix)
+	}
+	return ""
 }

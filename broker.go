@@ -32,6 +32,13 @@ var (
 	test          bool
 )
 
+type TickerType int
+
+const (
+	Crypto TickerType = iota
+	Stock
+)
+
 func init() {
 	flag.StringVar(&discordToken, "t", "", "Discord Token")
 	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
@@ -130,6 +137,18 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	/* Serving */
 	log.Printf("Processing request for: %s", ticker)
 
+	var tickerType TickerType
+	tickerType, ticker = getTickerWithType(ticker)
+
+	switch tickerType {
+	case Stock:
+		handleStockTicker(s, m, ticker)
+	case Crypto:
+		handleCryptoTicker(s, m, ticker)
+	}
+}
+
+func handleStockTicker(s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
 	value, change, err := getQuoteForStockTicker(ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
@@ -138,27 +157,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// TODO(MatthewLavine): Query for stock and cryto quotes concurrently to speed things up.
-
 	// Finnhub returns an empty quote for non-existant tickers.
 	if value == 0.0 {
-		var err error
-		value, err = getQuoteForCryptoAsset(ticker)
-		if err != nil {
-			msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
-			log.Printf(fmt.Sprintf("%s: %v", msg, err))
-			sendMessage(s, m.ChannelID, msg)
-			return
-		}
-
-		if value == 0.0 {
-			msg := fmt.Sprintf("No Such Asset: %s", ticker)
-			log.Printf(msg)
-			sendMessage(s, m.ChannelID, msg)
-			return
-		}
+		msg := fmt.Sprintf("No Such Asset: %s", ticker)
+		log.Printf(msg)
+		sendMessage(s, m.ChannelID, msg)
+		return
 	}
-
 	msgEmbed := createMessageEmbed(ticker, value, change)
 	log.Printf("%+v", msgEmbed)
 	sendMessageEmbed(s, m.ChannelID, msgEmbed)
@@ -171,6 +176,28 @@ func getQuoteForStockTicker(ticker string) (float32, float32, error) {
 	}
 	dailyChangePercent := ((quote.C - quote.Pc) / quote.Pc) * 100
 	return quote.C, dailyChangePercent, nil
+}
+
+func handleCryptoTicker(s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
+	value, err := getQuoteForCryptoAsset(ticker)
+	if err != nil {
+		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
+		log.Printf(fmt.Sprintf("%s: %v", msg, err))
+		sendMessage(s, m.ChannelID, msg)
+		return
+	}
+
+	// Finnhub returns an empty quote for non-existant tickers.
+	if value == 0.0 {
+		msg := fmt.Sprintf("No Such Asset: %s", ticker)
+		log.Printf(msg)
+		sendMessage(s, m.ChannelID, msg)
+		return
+	}
+
+	msgEmbed := createMessageEmbed(ticker, value, 0.0)
+	log.Printf("%+v", msgEmbed)
+	sendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
 func getQuoteForCryptoAsset(asset string) (float32, error) {
@@ -257,7 +284,7 @@ func createMessageEmbed(ticker string, value float32, change float32) *discordgo
 
 func createMessageEmbedWithPrefix(ticker string, value float32, change float32, prefix string) *discordgo.MessageEmbed {
 	mesg := fmt.Sprintf("Latest Quote: $%.2f", value)
-	if !math.IsNaN(float64(change)) {
+	if !math.IsNaN(float64(change)) && change != 0 {
 		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, change)
 	}
 	return &discordgo.MessageEmbed{
@@ -275,4 +302,11 @@ func getMessagePrefix() string {
 		return messagePrefix
 	}
 	return ""
+}
+
+func getTickerWithType(s string) (TickerType, string) {
+	if strings.HasPrefix(s, "$") {
+		return Crypto, strings.TrimPrefix(s, "$")
+	}
+	return Stock, s
 }

@@ -169,7 +169,7 @@ func getQuoteForStockTicker(ticker string) (float32, float32, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	dailyChangePercent := ((quote.C - quote.Pc) / quote.O) * 100
+	dailyChangePercent := ((quote.C - quote.Pc) / quote.Pc) * 100
 	return quote.C, dailyChangePercent, nil
 }
 

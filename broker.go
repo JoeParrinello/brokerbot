@@ -9,7 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
@@ -93,6 +95,20 @@ func main() {
 		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		s := <-sigc
+		log.Printf("Caught %v, shutting down connection to Discord.", s)
+		discordClient.Close()
+		log.Printf("DiscordBot shutting down gracefully.")
+		os.Exit(0)
+	}()
+
 	http.HandleFunc("/", handleDefaultPort)
 
 	port := os.Getenv("PORT")
@@ -103,7 +119,6 @@ func main() {
 
 	log.Printf("DiscordBot ready to serve on port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Printf("DiscordBot shutting down")
 		discordClient.Close()
 		log.Fatal(err)
 	}

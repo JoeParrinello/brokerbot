@@ -4,6 +4,7 @@ import (
 	"BrokerBot/cryptolib"
 	"BrokerBot/messageutil"
 	"BrokerBot/secrets"
+	"BrokerBot/shutdownutil"
 	"BrokerBot/stocklib"
 	"context"
 	"flag"
@@ -12,9 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
@@ -93,19 +92,7 @@ func main() {
 		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		s := <-sigc
-		log.Printf("Caught %v, shutting down connection to Discord.", s)
-		discordClient.Close()
-		log.Printf("DiscordBot shutting down gracefully.")
-		os.Exit(0)
-	}()
+	shutdownutil.AddShutdownHooks(discordClient)
 
 	http.HandleFunc("/", handleDefaultPort)
 

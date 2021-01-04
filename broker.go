@@ -1,11 +1,14 @@
 package main
 
 import (
+	"BrokerBot/cryptolib"
+	"BrokerBot/messageutil"
+	"BrokerBot/secrets"
+	"BrokerBot/stocklib"
 	"context"
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -14,11 +17,9 @@ import (
 	"syscall"
 	"time"
 
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zokypesch/proto-lib/utils"
-	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
 var (
@@ -34,22 +35,20 @@ var (
 	finnhubClient *finnhub.DefaultApiService
 	discordClient *discordgo.Session
 
-	messagePrefix          string
 	test                   bool
 	timeSinceLastHeartbeat time.Time
 )
 
-type TickerType int
+type tickerType int
 
 const (
-	Crypto TickerType = iota
-	Stock
+	crypto tickerType = iota
+	stock
 )
 
 func init() {
 	flag.StringVar(&discordToken, "t", "", "Discord Token")
 	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
-	flag.StringVar(&cryptoExchange, "exchange", "GEMINI", "Crypto Exchange")
 	flag.BoolVar(&test, "test", false, "Run in test mode")
 	flag.Parse()
 }
@@ -61,8 +60,7 @@ func main() {
 	initTokens()
 
 	if test {
-		messagePrefix = utils.RandStringBytesMaskImprSrcUnsafe(6)
-		log.Printf("test mode activated. message prefix: %s", messagePrefix)
+		messageutil.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
 	}
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
@@ -133,7 +131,7 @@ func initTokens() {
 	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
 
 	var ok bool
-	ok, finnhubToken, discordToken = getSecrets()
+	ok, finnhubToken, discordToken = secrets.GetSecrets()
 	if !ok {
 		log.Fatalf("API tokens not found in ENV, aborting...")
 	}
@@ -171,176 +169,20 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	/* Serving */
 	log.Printf("Processing request for: %s", ticker)
 
-	var tickerType TickerType
+	var tickerType tickerType
 	tickerType, ticker = getTickerWithType(ticker)
 
 	switch tickerType {
-	case Stock:
-		handleStockTicker(s, m, ticker)
-	case Crypto:
-		handleCryptoTicker(s, m, ticker)
+	case stock:
+		stocklib.HandleStockTicker(ctx, finnhubClient, s, m, ticker)
+	case crypto:
+		cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
 	}
 }
 
-func handleStockTicker(s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	value, change, err := getQuoteForStockTicker(ticker)
-	if err != nil {
-		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
-		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		sendMessage(s, m.ChannelID, msg)
-		return
-	}
-
-	// Finnhub returns an empty quote for non-existant tickers.
-	if value == 0.0 {
-		msg := fmt.Sprintf("No Such Asset: %s", ticker)
-		log.Printf(msg)
-		sendMessage(s, m.ChannelID, msg)
-		return
-	}
-	msgEmbed := createMessageEmbed(ticker, value, change)
-	log.Printf("%+v", msgEmbed)
-	sendMessageEmbed(s, m.ChannelID, msgEmbed)
-}
-
-func getQuoteForStockTicker(ticker string) (float32, float32, error) {
-	quote, _, err := finnhubClient.Quote(ctx, ticker)
-	if err != nil {
-		return 0, 0, err
-	}
-	dailyChangePercent := ((quote.C - quote.Pc) / quote.Pc) * 100
-	return quote.C, dailyChangePercent, nil
-}
-
-func handleCryptoTicker(s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	value, err := getQuoteForCryptoAsset(ticker)
-	if err != nil {
-		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
-		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		sendMessage(s, m.ChannelID, msg)
-		return
-	}
-
-	// Finnhub returns an empty quote for non-existant tickers.
-	if value == 0.0 {
-		msg := fmt.Sprintf("No Such Asset: %s", ticker)
-		log.Printf(msg)
-		sendMessage(s, m.ChannelID, msg)
-		return
-	}
-
-	msgEmbed := createMessageEmbed(ticker, value, 0.0)
-	log.Printf("%+v", msgEmbed)
-	sendMessageEmbed(s, m.ChannelID, msgEmbed)
-}
-
-func getQuoteForCryptoAsset(asset string) (float32, error) {
-	// Finnhub takes symbols in the format "GEMINI:btcusd"
-	formattedAsset := cryptoExchange + ":" + strings.ToLower(asset) + "usd"
-	quote, _, err := finnhubClient.CryptoCandles(ctx,
-		/* symbol= */ formattedAsset,
-		/* resolution= */ "1", // 1 = 1 hour
-		/* from= */ time.Now().Add(-1*time.Minute).Unix(),
-		/* to= */ time.Now().Unix())
-	if err != nil {
-		return 0, err
-	}
-	if len(quote.C) == 0 {
-		return 0, nil
-	}
-	return quote.C[0], nil
-}
-
-func getSecrets() (bool, string, string) {
-	success, finnhubKeyPath, discordKeyPath := getTokenPaths()
-	if !success {
-		log.Println("Failed getting the keypaths")
-		return false, "", ""
-	}
-	ctx := context.Background()
-	client, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		log.Println("Failed creating secret manager client,", err)
-		return false, "", ""
-	}
-
-	// Build the requests.
-	finnhubRequest := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: finnhubKeyPath,
-	}
-	discordRequest := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: discordKeyPath,
-	}
-
-	// Call the API.
-	finnhubResult, err := client.AccessSecretVersion(ctx, finnhubRequest)
-	if err != nil {
-		log.Println("Failed Getting the Finnhub Key", err)
-		return false, "", ""
-	}
-	discordResult, err := client.AccessSecretVersion(ctx, discordRequest)
-	if err != nil {
-		log.Println("Failed Getting the Discord Key:", err)
-		return false, "", ""
-	}
-
-	log.Println("Got the keys from secret manager")
-	return true, string(finnhubResult.GetPayload().GetData()), string(discordResult.GetPayload().GetData())
-}
-
-func getTokenPaths() (bool, string, string) {
-	log.Println("Fetching key paths from env files")
-	finnhubKeyPath, finnhubPresent := os.LookupEnv("FINNHUB_KEY_PATH")
-	discordKeyPath, discordPresent := os.LookupEnv("DISCORD_KEY_PATH")
-	return finnhubPresent && discordPresent, finnhubKeyPath, discordKeyPath
-}
-
-func sendMessage(s *discordgo.Session, channelID string, msg string) *discordgo.Message {
-	msg = fmt.Sprintf("%s: %s", getMessagePrefix(), msg)
-	message, err := s.ChannelMessageSend(channelID, msg)
-	if err != nil {
-		log.Printf("failed to send message %q to discord: %v", msg, err)
-	}
-	return message
-}
-func sendMessageEmbed(s *discordgo.Session, channelID string, msg *discordgo.MessageEmbed) *discordgo.Message {
-
-	message, err := s.ChannelMessageSendEmbed(channelID, msg)
-	if err != nil {
-		log.Printf("failed to send message %+v to discord: %v", msg, err)
-	}
-	return message
-}
-
-func createMessageEmbed(ticker string, value float32, change float32) *discordgo.MessageEmbed {
-	return createMessageEmbedWithPrefix(ticker, value, change, getMessagePrefix())
-}
-
-func createMessageEmbedWithPrefix(ticker string, value float32, change float32, prefix string) *discordgo.MessageEmbed {
-	mesg := fmt.Sprintf("Latest Quote: $%.2f", value)
-	if !math.IsNaN(float64(change)) && change != 0 {
-		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, change)
-	}
-	return &discordgo.MessageEmbed{
-		Title:       ticker,
-		URL:         fmt.Sprintf("https://www.google.com/search?q=%s", ticker),
-		Description: mesg,
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: prefix,
-		},
-	}
-}
-
-func getMessagePrefix() string {
-	if test {
-		return messagePrefix
-	}
-	return ""
-}
-
-func getTickerWithType(s string) (TickerType, string) {
+func getTickerWithType(s string) (tickerType, string) {
 	if strings.HasPrefix(s, "$") {
-		return Crypto, strings.TrimPrefix(s, "$")
+		return crypto, strings.TrimPrefix(s, "$")
 	}
-	return Stock, s
+	return stock, s
 }

@@ -54,7 +54,7 @@ func init() {
 
 func main() {
 	log.Printf("DiscordBot starting up")
-	log.Printf("DiscordBot version: %s", sha1ver)
+	log.Printf("DiscordBot version: %s", buildVersion)
 	log.Printf("DiscordBot buildtime: %s", buildTime)
 	initTokens()
 

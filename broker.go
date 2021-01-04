@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -68,7 +69,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create Discord client: %v", err)
 	}
+
+	// Extend HTTP client timeouts to compensate for Google Cloud Run CPU container scheduling delay.
+	discordClient.Client.Transport = &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout:   60 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 60 * time.Second,
+	}
 	discordClient.Client.Timeout = 1 * time.Minute
+
 	discordClient.AddHandler(handleMessage)
 	discordClient.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages)
 

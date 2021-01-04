@@ -1,7 +1,7 @@
 package stocklib
 
 import (
-	"BrokerBot/messageutil"
+	"BrokerBot/messagelib"
 	"context"
 	"fmt"
 	"log"
@@ -16,7 +16,7 @@ func HandleStockTicker(ctx context.Context, f *finnhub.DefaultApiService, s *dis
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		messageutil.SendMessage(s, m.ChannelID, msg)
+		messagelib.SendMessage(s, m.ChannelID, msg)
 		return
 	}
 
@@ -24,12 +24,12 @@ func HandleStockTicker(ctx context.Context, f *finnhub.DefaultApiService, s *dis
 	if value == 0.0 {
 		msg := fmt.Sprintf("No Such Asset: %s", ticker)
 		log.Printf(msg)
-		messageutil.SendMessage(s, m.ChannelID, msg)
+		messagelib.SendMessage(s, m.ChannelID, msg)
 		return
 	}
-	msgEmbed := messageutil.CreateMessageEmbed(ticker, value, change)
+	msgEmbed := messagelib.CreateMessageEmbed(ticker, value, change)
 	log.Printf("%+v", msgEmbed)
-	messageutil.SendMessageEmbed(s, m.ChannelID, msgEmbed)
+	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
 func getQuoteForStockTicker(ctx context.Context, f *finnhub.DefaultApiService, ticker string) (float32, float32, error) {

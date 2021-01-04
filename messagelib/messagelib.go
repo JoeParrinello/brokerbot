@@ -1,4 +1,4 @@
-package messageutil
+package messagelib
 
 import (
 	"fmt"

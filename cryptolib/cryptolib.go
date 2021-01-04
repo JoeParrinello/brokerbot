@@ -1,7 +1,7 @@
 package cryptolib
 
 import (
-	"BrokerBot/messageutil"
+	"BrokerBot/messagelib"
 	"context"
 	"flag"
 	"fmt"
@@ -27,7 +27,7 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		messageutil.SendMessage(s, m.ChannelID, msg)
+		messagelib.SendMessage(s, m.ChannelID, msg)
 		return
 	}
 
@@ -35,13 +35,13 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 	if value == 0.0 {
 		msg := fmt.Sprintf("No Such Asset: %s", ticker)
 		log.Printf(msg)
-		messageutil.SendMessage(s, m.ChannelID, msg)
+		messagelib.SendMessage(s, m.ChannelID, msg)
 		return
 	}
 
-	msgEmbed := messageutil.CreateMessageEmbed(ticker, value, 0.0)
+	msgEmbed := messagelib.CreateMessageEmbed(ticker, value, 0.0)
 	log.Printf("%+v", msgEmbed)
-	messageutil.SendMessageEmbed(s, m.ChannelID, msgEmbed)
+	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
 func getQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (float32, error) {

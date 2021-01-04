@@ -2,8 +2,9 @@ package main
 
 import (
 	"BrokerBot/cryptolib"
-	"BrokerBot/messageutil"
-	"BrokerBot/secrets"
+	"BrokerBot/messagelib"
+	"BrokerBot/secretlib"
+	"BrokerBot/shutdownlib"
 	"BrokerBot/stocklib"
 	"context"
 	"flag"
@@ -12,9 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
@@ -60,7 +59,7 @@ func main() {
 	initTokens()
 
 	if test {
-		messageutil.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
+		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
 	}
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
@@ -93,19 +92,7 @@ func main() {
 		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-	go func() {
-		s := <-sigc
-		log.Printf("Caught %v, shutting down connection to Discord.", s)
-		discordClient.Close()
-		log.Printf("DiscordBot shutting down gracefully.")
-		os.Exit(0)
-	}()
+	shutdownlib.AddShutdownHooks(discordClient)
 
 	http.HandleFunc("/", handleDefaultPort)
 
@@ -131,7 +118,7 @@ func initTokens() {
 	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
 
 	var ok bool
-	ok, finnhubToken, discordToken = secrets.GetSecrets()
+	ok, finnhubToken, discordToken = secretlib.GetSecrets()
 	if !ok {
 		log.Fatalf("API tokens not found in ENV, aborting...")
 	}

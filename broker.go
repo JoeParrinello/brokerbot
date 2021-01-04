@@ -20,6 +20,9 @@ import (
 )
 
 var (
+	buildVersion string = "dev" // sha1 revision used to build the program
+	buildTime    string = "0"   // when the executable was built
+
 	discordToken   string
 	finnhubToken   string
 	cryptoExchange string
@@ -51,6 +54,8 @@ func init() {
 
 func main() {
 	log.Printf("DiscordBot starting up")
+	log.Printf("DiscordBot version: %s", sha1ver)
+	log.Printf("DiscordBot buildtime: %s", buildTime)
 	initTokens()
 
 	if test {

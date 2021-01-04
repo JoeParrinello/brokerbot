@@ -29,8 +29,9 @@ var (
 	finnhubClient *finnhub.DefaultApiService
 	discordClient *discordgo.Session
 
-	messagePrefix string
-	test          bool
+	messagePrefix          string
+	test                   bool
+	timeSinceLastHeartbeat time.Time
 )
 
 type TickerType int
@@ -77,6 +78,7 @@ func main() {
 		}).Dial,
 		TLSHandshakeTimeout: 60 * time.Second,
 	}
+	discordClient.Client.Timeout = 1 * time.Minute
 
 	discordClient.AddHandler(handleMessage)
 	discordClient.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages)
@@ -119,10 +121,12 @@ func initTokens() {
 
 func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
 	log.Println("Heartbeat")
+	timeSinceLastHeartbeat = time.Now()
 	fmt.Fprintln(w, "Hello World!")
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	log.Printf("time since last heartbeat: %s", time.Since(timeSinceLastHeartbeat))
 	/* Validation */
 	if m.Author.ID == s.State.User.ID {
 		// Prevent the bot from talking to itself.

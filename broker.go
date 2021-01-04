@@ -2,9 +2,9 @@ package main
 
 import (
 	"BrokerBot/cryptolib"
-	"BrokerBot/messageutil"
-	"BrokerBot/secrets"
-	"BrokerBot/shutdownutil"
+	"BrokerBot/messagelib"
+	"BrokerBot/secretlib"
+	"BrokerBot/shutdownlib"
 	"BrokerBot/stocklib"
 	"context"
 	"flag"
@@ -59,7 +59,7 @@ func main() {
 	initTokens()
 
 	if test {
-		messageutil.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
+		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
 	}
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
@@ -92,7 +92,7 @@ func main() {
 		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
-	shutdownutil.AddShutdownHooks(discordClient)
+	shutdownlib.AddShutdownHooks(discordClient)
 
 	http.HandleFunc("/", handleDefaultPort)
 
@@ -118,7 +118,7 @@ func initTokens() {
 	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
 
 	var ok bool
-	ok, finnhubToken, discordToken = secrets.GetSecrets()
+	ok, finnhubToken, discordToken = secretlib.GetSecrets()
 	if !ok {
 		log.Fatalf("API tokens not found in ENV, aborting...")
 	}

@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JoeParrinello/BrokerBot/cryptolib"
-	"github.com/JoeParrinello/BrokerBot/messagelib"
-	"github.com/JoeParrinello/BrokerBot/secretlib"
-	"github.com/JoeParrinello/BrokerBot/shutdownlib"
-	"github.com/JoeParrinello/BrokerBot/stocklib"
+	"brokerbot/cryptolib"
+	"brokerbot/messagelib"
+	"brokerbot/secretlib"
+	"brokerbot/shutdownlib"
+	"brokerbot/stocklib"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"

@@ -1,11 +1,6 @@
 package main
 
 import (
-	"BrokerBot/cryptolib"
-	"BrokerBot/messagelib"
-	"BrokerBot/secretlib"
-	"BrokerBot/shutdownlib"
-	"BrokerBot/stocklib"
 	"context"
 	"flag"
 	"fmt"
@@ -15,6 +10,12 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/JoeParrinello/BrokerBot/cryptolib"
+	"github.com/JoeParrinello/BrokerBot/messagelib"
+	"github.com/JoeParrinello/BrokerBot/secretlib"
+	"github.com/JoeParrinello/BrokerBot/shutdownlib"
+	"github.com/JoeParrinello/BrokerBot/stocklib"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"

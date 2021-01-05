@@ -10,7 +10,7 @@ ADD . /go/src/brokerbot
 
 # Build the brokerbot command inside the container.
 RUN go get /go/src/brokerbot
-RUN go install -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" /go/src/hardorange/brokerbot
+RUN go install -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" /go/src/brokerbot
 
 # Run the brokerbot
 ENTRYPOINT /go/bin/brokerbot

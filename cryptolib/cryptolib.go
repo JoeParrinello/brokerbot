@@ -14,12 +14,8 @@ import (
 )
 
 var (
-	cryptoExchange string
+	cryptoExchange = flag.String("exchange", "GEMINI", "Crypto Exchange")
 )
-
-func init() {
-	flag.StringVar(&cryptoExchange, "exchange", "GEMINI", "Crypto Exchange")
-}
 
 // HandleCryptoTicker gets a crypto quote from Finnhub and return an embed to be sent to the user.
 func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
@@ -46,7 +42,7 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 
 func getQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (float32, error) {
 	// Finnhub takes symbols in the format "GEMINI:btcusd"
-	formattedAsset := cryptoExchange + ":" + strings.ToLower(asset) + "usd"
+	formattedAsset := *cryptoExchange + ":" + strings.ToLower(asset) + "usd"
 	quote, _, err := f.CryptoCandles(ctx,
 		/* symbol= */ formattedAsset,
 		/* resolution= */ "1", // 1 = 1 hour

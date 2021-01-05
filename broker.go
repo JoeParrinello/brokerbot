@@ -25,16 +25,14 @@ var (
 	buildVersion string = "dev" // sha1 revision used to build the program
 	buildTime    string = "0"   // when the executable was built
 
-	discordToken   string
-	finnhubToken   string
-	cryptoExchange string
+	discordToken = flag.String("t", "", "Discord Token")
+	finnhubToken = flag.String("finnhub", "", "Finnhub Token")
+	testMode     = flag.Bool("test", false, "Run in test mode")
 
 	ctx context.Context
 
 	finnhubClient *finnhub.DefaultApiService
-	discordClient *discordgo.Session
 
-	test                   bool
 	timeSinceLastHeartbeat time.Time
 )
 
@@ -45,31 +43,24 @@ const (
 	stock
 )
 
-func init() {
-	flag.StringVar(&discordToken, "t", "", "Discord Token")
-	flag.StringVar(&finnhubToken, "finnhub", "", "Finnhub Token")
-	flag.BoolVar(&test, "test", false, "Run in test mode")
-	flag.Parse()
-}
-
 func main() {
 	log.Printf("DiscordBot starting up")
 	log.Printf("DiscordBot version: %s", buildVersion)
 	log.Printf("DiscordBot build time: %s", buildTime)
+	flag.Parse()
 	initTokens()
 
-	if test {
+	if *testMode {
 		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
 	}
 
 	ctx = context.WithValue(context.Background(), finnhub.ContextAPIKey, finnhub.APIKey{
-		Key: finnhubToken,
+		Key: *finnhubToken,
 	})
 
 	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
 
-	var err error
-	discordClient, err = discordgo.New("Bot " + discordToken)
+	discordClient, err := discordgo.New("Bot " + *discordToken)
 	if err != nil {
 		log.Fatalf("failed to create Discord client: %v", err)
 	}
@@ -110,7 +101,7 @@ func main() {
 }
 
 func initTokens() {
-	if discordToken != "" && finnhubToken != "" {
+	if *discordToken != "" && *finnhubToken != "" {
 		log.Printf("API tokens have been passed via command-line flags.")
 		return
 	}
@@ -118,7 +109,7 @@ func initTokens() {
 	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
 
 	var ok bool
-	ok, finnhubToken, discordToken = secretlib.GetSecrets()
+	ok, *finnhubToken, *discordToken = secretlib.GetSecrets()
 	if !ok {
 		log.Fatalf("API tokens not found in ENV, aborting...")
 	}

@@ -1,10 +1,11 @@
 package stocklib
 
 import (
-	"BrokerBot/messagelib"
 	"context"
 	"fmt"
 	"log"
+
+	"github.com/JoeParrinello/BrokerBot/messagelib"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"

@@ -1,13 +1,14 @@
 package cryptolib
 
 import (
-	"BrokerBot/messagelib"
 	"context"
 	"flag"
 	"fmt"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/JoeParrinello/BrokerBot/messagelib"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"

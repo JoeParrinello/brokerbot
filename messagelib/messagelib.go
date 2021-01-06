@@ -13,6 +13,14 @@ var (
 	messagePrefix string = "TEST"
 )
 
+
+// TickerValue passes values of fetched content.
+type TickerValue struct {
+	Ticker string
+	Value float32
+	Change float32
+}
+
 // EnterTestModeWithPrefix enables extra log prefixes to identify a test server.
 func EnterTestModeWithPrefix(prefix string) {
 	test = true
@@ -45,18 +53,22 @@ func SendMessageEmbed(s *discordgo.Session, channelID string, msg *discordgo.Mes
 }
 
 // CreateMessageEmbed creates a rich Discord "embed" message
-func CreateMessageEmbed(ticker string, value float32, change float32) *discordgo.MessageEmbed {
-	return createMessageEmbedWithPrefix(ticker, value, change, getMessagePrefix())
+func CreateMessageEmbed(tickerValue *TickerValue) *discordgo.MessageEmbed {
+	return createMessageEmbedWithPrefix(tickerValue, getMessagePrefix())
 }
 
-func createMessageEmbedWithPrefix(ticker string, value float32, change float32, prefix string) *discordgo.MessageEmbed {
-	mesg := fmt.Sprintf("Latest Quote: $%.2f", value)
-	if !math.IsNaN(float64(change)) && change != 0 {
-		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, change)
+func createMessageEmbedWithPrefix(tickerValue *TickerValue, prefix string) *discordgo.MessageEmbed {
+	if tickerValue == nil {
+		return nil
+	}
+
+	mesg := fmt.Sprintf("Latest Quote: $%.2f", tickerValue.Value)
+	if !math.IsNaN(float64(tickerValue.Change)) && tickerValue.Change != 0 {
+		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, tickerValue.Change)
 	}
 	return &discordgo.MessageEmbed{
-		Title:       ticker,
-		URL:         fmt.Sprintf("https://www.google.com/search?q=%s", ticker),
+		Title:       tickerValue.Ticker,
+		URL:         fmt.Sprintf("https://www.google.com/search?q=%s", tickerValue.Ticker),
 		Description: mesg,
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: prefix,

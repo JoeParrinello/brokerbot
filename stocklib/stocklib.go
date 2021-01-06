@@ -12,7 +12,7 @@ import (
 
 // HandleStockTicker gets a stock quote from Finnhub and return an embed to be sent to the user.
 func HandleStockTicker(ctx context.Context, f *finnhub.DefaultApiService, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	tickerValue, err := getQuoteForStockTicker(ctx, f, ticker)
+	tickerValue, err := GetQuoteForStockTicker(ctx, f, ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for ticker %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -32,7 +32,9 @@ func HandleStockTicker(ctx context.Context, f *finnhub.DefaultApiService, s *dis
 	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
-func getQuoteForStockTicker(ctx context.Context, f *finnhub.DefaultApiService, ticker string) (*messagelib.TickerValue, error) {
+
+// GetQuoteForStockTicker returns the TickerValue for the provided ticker
+func GetQuoteForStockTicker(ctx context.Context, f *finnhub.DefaultApiService, ticker string) (*messagelib.TickerValue, error) {
 	quote, _, err := f.Quote(ctx, ticker)
 	if err != nil {
 		return nil, err

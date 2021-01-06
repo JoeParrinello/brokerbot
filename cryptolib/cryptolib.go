@@ -19,7 +19,7 @@ var (
 
 // HandleCryptoTicker gets a crypto quote from Finnhub and return an embed to be sent to the user.
 func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	tickerValue, err := getQuoteForCryptoAsset(ctx, f, ticker)
+	tickerValue, err := GetQuoteForCryptoAsset(ctx, f, ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -40,7 +40,7 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
-func getQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (*messagelib.TickerValue, error) {
+func GetQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (*messagelib.TickerValue, error) {
 	// Finnhub takes symbols in the format "GEMINI:btcusd"
 	formattedAsset := *cryptoExchange + ":" + strings.ToLower(asset) + "usd"
 	quote, _, err := f.CryptoCandles(ctx,

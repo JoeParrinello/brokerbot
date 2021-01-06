@@ -76,6 +76,37 @@ func createMessageEmbedWithPrefix(tickerValue *TickerValue, prefix string) *disc
 	}
 }
 
+
+// CreateMultiMessageEmbed will return an embedded message for multiple tickers.
+func CreateMultiMessageEmbed(tickers []*TickerValue) *discordgo.MessageEmbed {
+	return createMultiMessageEmbedWithPrefix(tickers, getMessagePrefix())
+}
+
+func createMultiMessageEmbedWithPrefix(tickers []*TickerValue, prefix string) *discordgo.MessageEmbed {
+	messageFields := make([]*discordgo.MessageEmbedField, len(tickers))
+	for i, ticker := range tickers {
+		messageFields[i] = createMessageEmbedField(ticker)
+	}
+	return &discordgo.MessageEmbed{
+		Fields: messageFields,
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: prefix,
+		},
+	}
+}
+
+func createMessageEmbedField(tickerValue *TickerValue) *discordgo.MessageEmbedField {
+	mesg := fmt.Sprintf("$%.2f", tickerValue.Value)
+	if !math.IsNaN(float64(tickerValue.Change)) && tickerValue.Change != 0 {
+		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, tickerValue.Change)
+	}
+	return &discordgo.MessageEmbedField{
+		Name: tickerValue.Ticker,
+		Value: mesg,
+		Inline: true,
+	}
+}
+
 func getMessagePrefix() string {
 	if test {
 		return messagePrefix

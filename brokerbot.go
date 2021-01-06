@@ -143,14 +143,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// TODO: Send a help message to the user.
 		log.Println("No stock tickers provided")
 		return
-	}
-
-	/* Serving */
-	log.Printf("Processing request for: %s", tickers)
-
-	for _, ticker := range tickers {
-		var tickerType tickerType
-		tickerType, ticker = getTickerWithType(ticker)
+	} else if (len(tickers) == 1 && tickers[0] != "") {
+		log.Printf("Processing request for: %s", tickers[0])
+		tickerType, ticker := getTickerWithType(tickers[0])
 
 		switch tickerType {
 		case stock:
@@ -158,6 +153,27 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		case crypto:
 			cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
 		}
+		return;
+	} else {
+		tickerValues := make([]*messagelib.TickerValue, len(tickers))
+		for index, ticker := range tickers {
+			var tickerType tickerType
+			tickerType, ticker = getTickerWithType(ticker)
+
+			switch tickerType {
+			case stock:
+				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
+				if (err == nil) {
+					tickerValues[index] = tickerValue
+				}
+			case crypto:
+				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(ctx, finnhubClient, ticker)
+				if (err == nil) {
+					tickerValues[index] = tickerValue
+				}
+			}
+		}
+		messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
 	}
 }
 

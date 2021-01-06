@@ -11,12 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"brokerbot/cryptolib"
-	"brokerbot/messagelib"
-	"brokerbot/secretlib"
-	"brokerbot/shutdownlib"
-	"brokerbot/stocklib"
-
+	"github.com/JoeParrinello/brokerbot/cryptolib"
+	"github.com/JoeParrinello/brokerbot/messagelib"
+	"github.com/JoeParrinello/brokerbot/secretlib"
+	"github.com/JoeParrinello/brokerbot/shutdownlib"
+	"github.com/JoeParrinello/brokerbot/stocklib"
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zokypesch/proto-lib/utils"
@@ -136,26 +135,29 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	ticker := strings.TrimPrefix(msg, "!stonks ")
-	ticker = strings.ToUpper(ticker)
+	userInput := strings.TrimPrefix(msg, "!stonks ")
+	userInput = strings.ToUpper(userInput)
+	tickers := strings.Split(userInput, " ")
 
-	if ticker == "" {
+	if len(tickers) == 1 && tickers[0] == "" {
 		// TODO: Send a help message to the user.
-		log.Println("Empty stock ticker")
+		log.Println("No stock tickers provided")
 		return
 	}
 
 	/* Serving */
-	log.Printf("Processing request for: %s", ticker)
+	log.Printf("Processing request for: %s", tickers)
 
-	var tickerType tickerType
-	tickerType, ticker = getTickerWithType(ticker)
+	for _, ticker := range tickers {
+		var tickerType tickerType
+		tickerType, ticker = getTickerWithType(ticker)
 
-	switch tickerType {
-	case stock:
-		stocklib.HandleStockTicker(ctx, finnhubClient, s, m, ticker)
-	case crypto:
-		cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
+		switch tickerType {
+		case stock:
+			stocklib.HandleStockTicker(ctx, finnhubClient, s, m, ticker)
+		case crypto:
+			cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
+		}
 	}
 }
 

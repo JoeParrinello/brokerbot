@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"brokerbot/messagelib"
-
+	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
 )

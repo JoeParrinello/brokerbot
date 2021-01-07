@@ -133,3 +133,17 @@ func ExpandAliases(s string) string{
 	}
 	return s
 }
+
+
+// DedupeTickerStrings returns a list of unique tickers from the provided string slice.
+func DedupeTickerStrings(tickers []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range tickers {
+			if _, value := keys[entry]; !value {
+					keys[entry] = true
+					list = append(list, entry)
+			}
+	}
+	return list
+}

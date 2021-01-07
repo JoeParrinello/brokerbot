@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -12,6 +13,12 @@ var (
 	test          bool   = false
 	messagePrefix string = "TEST"
 )
+
+var aliasMap = map[string]string{
+	"?CRYPTO": "$BTC $ETH $LTC $LINK $BCH $COMP",
+	"?MEMES":  "THCX PLUG FCEL BLDP NVDA",
+	"?FAANG":  "FB AMZN AAPL NFLX GOOG",
+}
 
 // TickerValue passes values of fetched content.
 type TickerValue struct {
@@ -118,4 +125,25 @@ func getMessagePrefix() string {
 		return messagePrefix
 	}
 	return ""
+}
+
+// ExpandAliases takes a string that contains an alias of format "?<alias>" and replaces the alias with the valid ticker string.
+func ExpandAliases(s string) string {
+	for k := range aliasMap {
+		s = strings.ReplaceAll(s, k, aliasMap[k])
+	}
+	return s
+}
+
+// DedupeTickerStrings returns a list of unique tickers from the provided string slice.
+func DedupeTickerStrings(tickers []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range tickers {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }

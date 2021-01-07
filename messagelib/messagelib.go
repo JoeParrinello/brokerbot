@@ -14,10 +14,10 @@ var (
 	messagePrefix string = "TEST"
 )
 
-var m = map[string]string{
+var aliasMap = map[string]string{
 	"?CRYPTO": "$BTC $ETH $LTC $LINK $BCH $COMP",
-	"?MEMES": "THCX PLUG FCEL BLDP NVDA",
-	"?FAANG": "FB AMZN AAPL NFLX GOOG",
+	"?MEMES":  "THCX PLUG FCEL BLDP NVDA",
+	"?FAANG":  "FB AMZN AAPL NFLX GOOG",
 }
 
 // TickerValue passes values of fetched content.
@@ -128,23 +128,22 @@ func getMessagePrefix() string {
 }
 
 // ExpandAliases takes a string that contains an alias of format "?<alias>" and replaces the alias with the valid ticker string.
-func ExpandAliases(s string) string{
-	for k := range m {
-    s = strings.ReplaceAll(s, k, m[k])
+func ExpandAliases(s string) string {
+	for k := range aliasMap {
+		s = strings.ReplaceAll(s, k, aliasMap[k])
 	}
 	return s
 }
-
 
 // DedupeTickerStrings returns a list of unique tickers from the provided string slice.
 func DedupeTickerStrings(tickers []string) []string {
 	keys := make(map[string]bool)
 	list := []string{}
 	for _, entry := range tickers {
-			if _, value := keys[entry]; !value {
-					keys[entry] = true
-					list = append(list, entry)
-			}
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
 	}
 	return list
 }

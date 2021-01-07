@@ -137,7 +137,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	userInput := strings.TrimPrefix(msg, "!stonks ")
 	userInput = strings.ToUpper(userInput)
-	tickers := strings.Split(userInput, " ")
+	expandedString := messagelib.ExpandAliases(userInput)
+	tickers := messagelib.DedupeTickerStrings(strings.Split(expandedString, " "))
 
 	if len(tickers) == 1 && tickers[0] == "" {
 		// TODO: Send a help message to the user.

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/JoeParrinello/brokerbot/cryptolib"
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/JoeParrinello/brokerbot/secretlib"
 	"github.com/JoeParrinello/brokerbot/shutdownlib"
 	"github.com/JoeParrinello/brokerbot/stocklib"
-	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zokypesch/proto-lib/utils"
 )
@@ -143,7 +143,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// TODO: Send a help message to the user.
 		log.Println("No stock tickers provided")
 		return
-	} else if (len(tickers) == 1 && tickers[0] != "") {
+	} else if len(tickers) == 1 && tickers[0] != "" {
 		log.Printf("Processing request for: %s", tickers[0])
 		tickerType, ticker := getTickerWithType(tickers[0])
 
@@ -153,27 +153,29 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		case crypto:
 			cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
 		}
-		return;
+		return
 	} else {
-		tickerValues := make([]*messagelib.TickerValue, len(tickers))
-		for index, ticker := range tickers {
+		var tickerValues []*messagelib.TickerValue
+		for _, ticker := range tickers {
 			var tickerType tickerType
 			tickerType, ticker = getTickerWithType(ticker)
 
 			switch tickerType {
 			case stock:
 				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
-				if (err == nil) {
-					tickerValues[index] = tickerValue
+				if err == nil && tickerValue != nil {
+					tickerValues = append(tickerValues, tickerValue)
 				}
 			case crypto:
 				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(ctx, finnhubClient, ticker)
-				if (err == nil) {
-					tickerValues[index] = tickerValue
+				if err == nil && tickerValue != nil {
+					tickerValues = append(tickerValues, tickerValue)
 				}
 			}
 		}
-		messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
+		if tickerValues != nil && len(tickerValues) > 0 {
+			messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
+		}
 	}
 }
 

@@ -13,11 +13,10 @@ var (
 	messagePrefix string = "TEST"
 )
 
-
 // TickerValue passes values of fetched content.
 type TickerValue struct {
 	Ticker string
-	Value float32
+	Value  float32
 	Change float32
 }
 
@@ -76,7 +75,6 @@ func createMessageEmbedWithPrefix(tickerValue *TickerValue, prefix string) *disc
 	}
 }
 
-
 // CreateMultiMessageEmbed will return an embedded message for multiple tickers.
 func CreateMultiMessageEmbed(tickers []*TickerValue) *discordgo.MessageEmbed {
 	return createMultiMessageEmbedWithPrefix(tickers, getMessagePrefix())
@@ -96,13 +94,21 @@ func createMultiMessageEmbedWithPrefix(tickers []*TickerValue, prefix string) *d
 }
 
 func createMessageEmbedField(tickerValue *TickerValue) *discordgo.MessageEmbedField {
+	if math.IsNaN(float64(tickerValue.Value)) || tickerValue.Value == 0.0 {
+		return &discordgo.MessageEmbedField{
+			Name:   tickerValue.Ticker,
+			Value:  "No Data",
+			Inline: true,
+		}
+	}
+
 	mesg := fmt.Sprintf("$%.2f", tickerValue.Value)
 	if !math.IsNaN(float64(tickerValue.Change)) && tickerValue.Change != 0 {
 		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, tickerValue.Change)
 	}
 	return &discordgo.MessageEmbedField{
-		Name: tickerValue.Ticker,
-		Value: mesg,
+		Name:   tickerValue.Ticker,
+		Value:  mesg,
 		Inline: true,
 	}
 }

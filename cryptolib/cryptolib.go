@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/Finnhub-Stock-API/finnhub-go"
+	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -40,6 +40,7 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
+// GetQuoteForCryptoAsset returns the TickerValue for Crypto Ticker.
 func GetQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (*messagelib.TickerValue, error) {
 	// Finnhub takes symbols in the format "GEMINI:btcusd"
 	formattedAsset := *cryptoExchange + ":" + strings.ToLower(asset) + "usd"
@@ -52,7 +53,8 @@ func GetQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, a
 		return nil, err
 	}
 	if len(quote.C) == 0 {
-		return nil, nil
+		// A value of 0.0 means that the Ticker is Undefined.
+		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
 	}
 	return &messagelib.TickerValue{Ticker: asset, Value: quote.C[0], Change: 0.0}, nil
 }

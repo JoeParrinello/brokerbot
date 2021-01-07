@@ -98,7 +98,7 @@ func createMessageEmbedField(tickerValue *TickerValue) *discordgo.MessageEmbedFi
 		return &discordgo.MessageEmbedField{
 			Name:   tickerValue.Ticker,
 			Value:  "No Data",
-			Inline: true,
+			Inline: false,
 		}
 	}
 
@@ -109,7 +109,7 @@ func createMessageEmbedField(tickerValue *TickerValue) *discordgo.MessageEmbedFi
 	return &discordgo.MessageEmbedField{
 		Name:   tickerValue.Ticker,
 		Value:  mesg,
-		Inline: true,
+		Inline: false,
 	}
 }
 

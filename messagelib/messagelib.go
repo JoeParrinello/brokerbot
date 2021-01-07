@@ -17,6 +17,7 @@ var (
 var m = map[string]string{
 	"?CRYPTO": "$BTC $ETH $LTC $LINK $BCH $COMP",
 	"?MEMES": "THCX PLUG FCEL BLDP NVDA",
+	"?FAANG": "FB AMZN AAPL NFLX GOOG",
 }
 
 // TickerValue passes values of fetched content.

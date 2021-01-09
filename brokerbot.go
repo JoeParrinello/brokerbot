@@ -129,12 +129,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	msg := strings.TrimSpace(m.Content)
+	isBotMention, msg := hasBotMention(s, m)
 
-	if !strings.HasPrefix(msg, "!stonks ") {
-		return
+	if !isBotMention {
+		// Ignore bot mentions.
+		return;
 	}
 
+	msg = strings.TrimSpace(msg)
 	userInput := strings.TrimPrefix(msg, "!stonks ")
 	userInput = strings.ToUpper(userInput)
 	expandedString := messagelib.ExpandAliases(userInput)
@@ -178,6 +180,18 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
 		}
 	}
+}
+
+func hasBotMention(s *discordgo.Session, m *discordgo.MessageCreate) (bool, string) {
+	for _, mention := range m.Mentions {
+		if mention.ID == s.State.User.ID {
+			return true, strings.NewReplacer(
+				"<@"+s.State.User.ID+"> ", "",
+				"<@!"+s.State.User.ID+"> ", "",
+			).Replace(m.Content)
+		}
+	}
+	return false, ""
 }
 
 func getTickerWithType(s string) (tickerType, string) {

@@ -1,6 +1,7 @@
 package shutdownlib
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -25,7 +26,8 @@ func AddShutdownHooks(s *discordgo.Session) {
 
 func shutdownHandler(sigChan chan os.Signal, s *discordgo.Session) {
 	sig := <-sigChan
-	log.Printf("Caught signal %q, shutting down connection to Discord.", sig)
+	fmt.Println() // Spacer to account for ^C in terminal output.
+	log.Printf("DiscordBot caught signal %q, shutting down connection to Discord.", sig)
 	s.Close()
 	log.Printf("DiscordBot shutting down gracefully.")
 	os.Exit(0)

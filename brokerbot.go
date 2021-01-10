@@ -101,11 +101,8 @@ func main() {
 
 func initTokens() {
 	if *discordToken != "" && *finnhubToken != "" {
-		log.Printf("API tokens have been passed via command-line flags.")
 		return
 	}
-
-	log.Printf("API tokens have not been passed via command-line flags, checking ENV.")
 
 	var ok bool
 	ok, *finnhubToken, *discordToken = secretlib.GetSecrets()

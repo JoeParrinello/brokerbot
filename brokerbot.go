@@ -90,7 +90,6 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		log.Printf("defaulting to port %s", port)
 	}
 
 	log.Printf("DiscordBot ready to serve on port %s", port)
@@ -133,7 +132,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if !isBotMention {
 		// Ignore bot mentions.
-		return;
+		return
 	}
 
 	msg = strings.TrimSpace(msg)

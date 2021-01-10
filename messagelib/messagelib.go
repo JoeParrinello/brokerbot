@@ -31,7 +31,7 @@ type TickerValue struct {
 func EnterTestModeWithPrefix(prefix string) {
 	test = true
 	messagePrefix = prefix
-	log.Printf("Test mode activated. Message Prefix: %q", prefix)
+	log.Printf("DiscordBot running in test mode with prefix: %q", prefix)
 }
 
 // ExitTestMode disables extra log prefixes to identify a test server.

@@ -83,7 +83,10 @@ func main() {
 		log.Fatalf("failed to open Discord client: %v", err)
 	}
 
-	shutdownlib.AddShutdownHooks(discordClient)
+	shutdownlib.AddShutdownHandler(func() error {
+		log.Printf("DiscordBot shutting down connection to Discord.")
+		return discordClient.Close()
+	})
 
 	http.HandleFunc("/", handleDefaultPort)
 

@@ -5,30 +5,50 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-
-	"github.com/bwmarrin/discordgo"
 )
 
-var gracefulShutdownSignals = []os.Signal{
-	syscall.SIGHUP,
-	syscall.SIGINT,
-	syscall.SIGTERM,
-	syscall.SIGQUIT,
-}
+var (
+	gracefulShutdownSignals = []os.Signal{
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	}
 
-// AddShutdownHooks registers a shutdown handler to be run upon receiving various OS signals.
-func AddShutdownHooks(s *discordgo.Session) {
+	shutdownHooks []func() error
+)
+
+func init() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, gracefulShutdownSignals...)
-	go shutdownHandler(sigChan, s)
+	go shutdownHandler(sigChan)
 }
 
-func shutdownHandler(sigChan chan os.Signal, s *discordgo.Session) {
+// AddShutdownHandler registers a handler to be run before shutdown.
+func AddShutdownHandler(handler func() error) {
+	shutdownHooks = append(shutdownHooks, handler)
+}
+
+func shutdownHandler(sigChan chan os.Signal) {
 	sig := <-sigChan
+
 	fmt.Println() // Spacer to account for ^C in terminal output.
-	log.Printf("DiscordBot caught signal %q, shutting down connection to Discord.", sig)
-	s.Close()
-	log.Printf("DiscordBot shutting down gracefully.")
+	log.Printf("Caught signal %q, running %d shutdown handlers.", sig, len(shutdownHooks))
+
+	var wg sync.WaitGroup
+	for _, hook := range shutdownHooks {
+		wg.Add(1)
+		go func(hook func() error) {
+			defer wg.Done()
+			if err := hook(); err != nil {
+				log.Printf("Shutdown hook failed: %v", err)
+			}
+		}(hook)
+	}
+	wg.Wait()
+
+	log.Printf("Graceful shutdown complete, exiting.")
 	os.Exit(0)
 }

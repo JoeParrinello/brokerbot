@@ -1,16 +1,13 @@
 package cryptolib
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/bwmarrin/discordgo"
@@ -19,6 +16,7 @@ import (
 const (
 	geminiBaseURL      = "https://api.gemini.com"
 	geminiPriceFeedURI = "/v1/pricefeed"
+	brokerbotUserAgent = "brokerbot"
 )
 
 var (
@@ -36,8 +34,8 @@ type PriceFeed struct {
 }
 
 // HandleCryptoTicker gets a crypto quote from Finnhub and return an embed to be sent to the user.
-func HandleCryptoTicker(ctx context.Context, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	tickerValue, err := GetQuoteForCryptoAsset(ctx, ticker)
+func HandleCryptoTicker(priceFeeds []*PriceFeed, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
+	tickerValue, err := GetQuoteForCryptoAsset(priceFeeds, ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -59,12 +57,8 @@ func HandleCryptoTicker(ctx context.Context, s *discordgo.Session, m *discordgo.
 }
 
 // GetQuoteForCryptoAsset returns the TickerValue for Crypto Ticker.
-func GetQuoteForCryptoAsset(ctx context.Context, asset string) (*messagelib.TickerValue, error) {
+func GetQuoteForCryptoAsset(priceFeeds []*PriceFeed, asset string) (*messagelib.TickerValue, error) {
 	formattedAsset := strings.ToUpper(asset) + "USD"
-	priceFeeds, ok := ctx.Value(PriceFeeds).([]PriceFeed)
-	if !ok {
-		return nil, errors.New("couldn't unmarshal priceFeeds from context")
-	}
 	priceFeed, ok := getPriceFeed(priceFeeds, formattedAsset)
 	if !ok {
 		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
@@ -81,33 +75,30 @@ func GetQuoteForCryptoAsset(ctx context.Context, asset string) (*messagelib.Tick
 	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change) * 100.0}, nil
 }
 
-func getPriceFeed(priceFeeds []PriceFeed, asset string) (*PriceFeed, bool) {
+func getPriceFeed(priceFeeds []*PriceFeed, asset string) (*PriceFeed, bool) {
 	for i := range priceFeeds {
 		if priceFeeds[i].Pair == asset {
-			return &priceFeeds[i], true
+			return priceFeeds[i], true
 		}
 	}
 	return nil, false
 }
 
 // GetPriceFeeds returns the current Price points of cryptos traded on Gemini.
-func GetPriceFeeds() ([]PriceFeed, error) {
-	var priceFeeds []PriceFeed
-	url := geminiBaseURL + geminiPriceFeedURI
-	geminiClient := http.Client{
-		Timeout: time.Second * 2, // Timeout after 2 seconds
-	}
+func GetPriceFeeds(geminiClient *http.Client) ([]*PriceFeed, error) {
+	var priceFeeds []*PriceFeed
 
+	url := geminiBaseURL + geminiPriceFeedURI
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return priceFeeds, err
+		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "brokerbot")
+	req.Header.Set("User-Agent", brokerbotUserAgent)
 
 	res, getErr := geminiClient.Do(req)
 	if getErr != nil {
-		return priceFeeds, getErr
+		return nil, getErr
 	}
 
 	if res.Body != nil {
@@ -116,10 +107,13 @@ func GetPriceFeeds() ([]PriceFeed, error) {
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		return priceFeeds, readErr
+		return nil, readErr
 	}
 
-	json.Unmarshal(body, &priceFeeds)
+	unmarshalErr := json.Unmarshal(body, &priceFeeds)
+	if unmarshalErr != nil {
+		return nil, unmarshalErr
+	}
 
 	return priceFeeds, nil
 }

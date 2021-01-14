@@ -1,25 +1,41 @@
 package cryptolib
 
 import (
-	"context"
-	"flag"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"strconv"
 	"strings"
-	"time"
 
-	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/bwmarrin/discordgo"
 )
 
-var (
-	cryptoExchange = flag.String("exchange", "GEMINI", "Crypto Exchange")
+const (
+	geminiBaseURL      = "https://api.gemini.com"
+	geminiPriceFeedURI = "/v1/pricefeed"
+	brokerbotUserAgent = "brokerbot"
 )
 
+var (
+	// PriceFeeds takes a request scope quotes for the Gemini Crypto Exchange.
+	PriceFeeds = contextKey("priceFeeds")
+)
+
+type contextKey string
+
+// PriceFeed is a current Gemini provided ticker value.
+type PriceFeed struct {
+	Pair   string `json:"pair"`
+	Price  string `json:"price"`
+	Change string `json:"percentChange24h"`
+}
+
 // HandleCryptoTicker gets a crypto quote from Finnhub and return an embed to be sent to the user.
-func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	tickerValue, err := GetQuoteForCryptoAsset(ctx, f, ticker)
+func HandleCryptoTicker(priceFeeds []*PriceFeed, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
+	tickerValue, err := GetQuoteForCryptoAsset(priceFeeds, ticker)
 	if err != nil {
 		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
 		log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -27,7 +43,7 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 		return
 	}
 
-	// Finnhub returns an empty quote for non-existant tickers.
+	// Empty quotes are non-existant tickers.
 	if tickerValue.Value == 0.0 {
 		msg := fmt.Sprintf("No Such Asset: %s", ticker)
 		log.Printf(msg)
@@ -41,20 +57,63 @@ func HandleCryptoTicker(ctx context.Context, f *finnhub.DefaultApiService, s *di
 }
 
 // GetQuoteForCryptoAsset returns the TickerValue for Crypto Ticker.
-func GetQuoteForCryptoAsset(ctx context.Context, f *finnhub.DefaultApiService, asset string) (*messagelib.TickerValue, error) {
-	// Finnhub takes symbols in the format "GEMINI:btcusd"
-	formattedAsset := *cryptoExchange + ":" + strings.ToLower(asset) + "usd"
-	quote, _, err := f.CryptoCandles(ctx,
-		/* symbol= */ formattedAsset,
-		/* resolution= */ "1", // 1 = 1 hour
-		/* from= */ time.Now().Add(-1*time.Minute).Unix(),
-		/* to= */ time.Now().Unix())
+func GetQuoteForCryptoAsset(priceFeeds []*PriceFeed, asset string) (*messagelib.TickerValue, error) {
+	formattedAsset := strings.ToUpper(asset) + "USD"
+	priceFeed, ok := getPriceFeed(priceFeeds, formattedAsset)
+	if !ok {
+		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
+	}
+
+	price, err := strconv.ParseFloat(priceFeed.Price, 32)
+	if err != nil {
+		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
+	}
+	change, err := strconv.ParseFloat(priceFeed.Change, 32)
+	if err != nil {
+		return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: 0.0}, nil
+	}
+	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change) * 100.0}, nil
+}
+
+func getPriceFeed(priceFeeds []*PriceFeed, asset string) (*PriceFeed, bool) {
+	for i := range priceFeeds {
+		if priceFeeds[i].Pair == asset {
+			return priceFeeds[i], true
+		}
+	}
+	return nil, false
+}
+
+// GetPriceFeeds returns the current Price points of cryptos traded on Gemini.
+func GetPriceFeeds(geminiClient *http.Client) ([]*PriceFeed, error) {
+	var priceFeeds []*PriceFeed
+
+	url := geminiBaseURL + geminiPriceFeedURI
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	if len(quote.C) == 0 {
-		// A value of 0.0 means that the Ticker is Undefined.
-		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
+
+	req.Header.Set("User-Agent", brokerbotUserAgent)
+
+	res, getErr := geminiClient.Do(req)
+	if getErr != nil {
+		return nil, getErr
 	}
-	return &messagelib.TickerValue{Ticker: asset, Value: quote.C[0], Change: 0.0}, nil
+
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	unmarshalErr := json.Unmarshal(body, &priceFeeds)
+	if unmarshalErr != nil {
+		return nil, unmarshalErr
+	}
+
+	return priceFeeds, nil
 }

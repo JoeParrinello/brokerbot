@@ -32,6 +32,7 @@ var (
 	ctx context.Context
 
 	finnhubClient *finnhub.DefaultApiService
+	geminiClient *http.Client
 
 	timeSinceLastHeartbeat time.Time
 )
@@ -59,6 +60,10 @@ func main() {
 	})
 
 	finnhubClient = finnhub.NewAPIClient(finnhub.NewConfiguration()).DefaultApi
+
+	geminiClient = &http.Client{
+		Timeout: time.Second * 30,
+	}
 
 	discordClient, err := discordgo.New("Bot " + *discordToken)
 	if err != nil {
@@ -141,19 +146,27 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	expandedString := messagelib.ExpandAliases(userInput)
 	tickers := messagelib.DedupeTickerStrings(strings.Split(expandedString, " "))
 
+	priceFeeds, err := cryptolib.GetPriceFeeds(geminiClient)
+	if err != nil {
+		// We don't fail, because we gracefully handle no crypto price feeds in the
+		// handle crypto methods, and a request might contain multiple stock tickers
+		log.Printf("Failed to fetch Price Feeds: %s", err);
+	}
+
 	if len(tickers) == 1 && tickers[0] == "" {
 		// TODO: Send a help message to the user.
 		log.Println("No stock tickers provided")
 		return
 	} else if len(tickers) == 1 && tickers[0] != "" {
 		log.Printf("Processing request for: %s", tickers[0])
+
 		tickerType, ticker := getTickerWithType(tickers[0])
 
 		switch tickerType {
 		case stock:
 			stocklib.HandleStockTicker(ctx, finnhubClient, s, m, ticker)
 		case crypto:
-			cryptolib.HandleCryptoTicker(ctx, finnhubClient, s, m, ticker)
+			cryptolib.HandleCryptoTicker(priceFeeds, s, m, ticker)
 		}
 		return
 	} else {
@@ -169,7 +182,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					tickerValues = append(tickerValues, tickerValue)
 				}
 			case crypto:
-				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(ctx, finnhubClient, ticker)
+				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
 				if err == nil && tickerValue != nil {
 					tickerValues = append(tickerValues, tickerValue)
 				}

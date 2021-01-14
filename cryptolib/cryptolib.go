@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -23,7 +22,6 @@ const (
 )
 
 var (
-	cryptoExchange = flag.String("exchange", "GEMINI", "Crypto Exchange")
 	// PriceFeeds takes a request scope quotes for the Gemini Crypto Exchange.
 	PriceFeeds = contextKey("priceFeeds")
 )
@@ -47,7 +45,7 @@ func HandleCryptoTicker(ctx context.Context, s *discordgo.Session, m *discordgo.
 		return
 	}
 
-	// Finnhub returns an empty quote for non-existant tickers.
+	// Empty quotes are non-existant tickers.
 	if tickerValue.Value == 0.0 {
 		msg := fmt.Sprintf("No Such Asset: %s", ticker)
 		log.Printf(msg)
@@ -80,7 +78,7 @@ func GetQuoteForCryptoAsset(ctx context.Context, asset string) (*messagelib.Tick
 	if err != nil {
 		return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: 0.0}, nil
 	}
-	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change)*100.0}, nil
+	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change) * 100.0}, nil
 }
 
 func getPriceFeed(priceFeeds []PriceFeed, asset string) (*PriceFeed, bool) {

@@ -33,8 +33,6 @@ var (
 
 	finnhubClient *finnhub.DefaultApiService
 	geminiClient  *http.Client
-
-	timeSinceLastHeartbeat time.Time
 )
 
 type tickerType int
@@ -123,9 +121,7 @@ func initTokens() {
 }
 
 func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
-	log.Println("Heartbeat")
-	timeSinceLastHeartbeat = time.Now()
-	fmt.Fprintln(w, "Hello World!")
+	fmt.Fprintln(w, "OK")
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -133,8 +129,6 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// Ignore messages from self.
 		return
 	}
-
-	//log.Printf("time since last heartbeat: %s", time.Since(timeSinceLastHeartbeat))
 
 	splitMsg := strings.Fields(m.ContentWithMentionsReplaced())
 

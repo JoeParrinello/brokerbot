@@ -155,6 +155,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	tickers = messagelib.ExpandAliases(tickers)
 	tickers = messagelib.DedupeSlice(tickers)
 
+	startTime := time.Now()
 	log.Printf("Received request for tickers: %s", tickers)
 
 	log.Println("Fetching crypto price feeds.")
@@ -194,7 +195,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
-	log.Printf("Sent response for tickers: %s", tickers)
+	log.Printf("Sent response for tickers in %v: %s", time.Since(startTime), tickers)
 }
 
 func getTickerAndType(s string) (string, tickerType) {

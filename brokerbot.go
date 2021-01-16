@@ -198,7 +198,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			tickerValues = append(tickerValues, tickerValue)
 		}
 	}
+
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
+	log.Printf("Sent response for tickers: %s", tickers)
 }
 
 func getTickerAndType(s string) (string, tickerType) {

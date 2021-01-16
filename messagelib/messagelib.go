@@ -14,10 +14,10 @@ var (
 	messagePrefix string = "TEST"
 )
 
-var aliasMap = map[string]string{
-	"?CRYPTO": "$BTC $ETH $LTC $LINK $BCH $COMP",
-	"?MEMES":  "THCX PLUG FCEL BLDP NVDA",
-	"?FAANG":  "FB AMZN AAPL NFLX GOOG",
+var aliasMap = map[string][]string{
+	"?CRYPTO": {"$BTC", "$ETH", "$LTC", "$LINK", "$BCH", "$COMP"},
+	"?MEMES":  {"THCX", "PLUG", "FCEL", "BLDP", "NVDA"},
+	"?FAANG":  {"FB", "AMZN", "AAPL", "NFLX", "GOOG"},
 }
 
 // TickerValue passes values of fetched content.
@@ -84,7 +84,7 @@ func createMessageEmbedWithPrefix(tickerValue *TickerValue, prefix string) *disc
 
 // CreateMultiMessageEmbed will return an embedded message for multiple tickers.
 func CreateMultiMessageEmbed(tickers []*TickerValue) *discordgo.MessageEmbed {
-	return createMultiMessageEmbedWithPrefix(tickers, getMessagePrefix())
+	return createMultiMessageEmbedWithPrefix(tickers, getTestServerID())
 }
 
 func createMultiMessageEmbedWithPrefix(tickers []*TickerValue, prefix string) *discordgo.MessageEmbed {
@@ -134,23 +134,44 @@ func getTestServerID() string {
 	return ""
 }
 
-// ExpandAliases takes a string that contains an alias of format "?<alias>" and replaces the alias with the valid ticker string.
-func ExpandAliases(s string) string {
-	for k := range aliasMap {
-		s = strings.ReplaceAll(s, k, aliasMap[k])
-	}
-	return s
-}
-
-// DedupeTickerStrings returns a list of unique tickers from the provided string slice.
-func DedupeTickerStrings(tickers []string) []string {
-	keys := make(map[string]bool)
-	list := []string{}
-	for _, entry := range tickers {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
+// RemoveMentions removes any @ mentions from a message slice.
+func RemoveMentions(s []string) (ret []string) {
+	for _, v := range s {
+		if !strings.HasPrefix(v, "@") {
+			ret = append(ret, v)
 		}
 	}
-	return list
+	return
+}
+
+// CanonicalizeMessage upcases each field in a message slice.
+func CanonicalizeMessage(s []string) (ret []string) {
+	for _, v := range s {
+		ret = append(ret, strings.ToUpper(v))
+	}
+	return
+}
+
+// ExpandAliases takes a string that contains an alias of format "?<alias>" and replaces the alias with the valid ticker string.
+func ExpandAliases(s []string) (ret []string) {
+	for _, v := range s {
+		if strings.HasPrefix(v, "?") {
+			ret = append(ret, aliasMap[v]...)
+		} else {
+			ret = append(ret, v)
+		}
+	}
+	return
+}
+
+// DedupeSlice returns a list of unique tickers from the provided string slice.
+func DedupeSlice(s []string) (ret []string) {
+	seen := make(map[string]bool)
+	for _, v := range s {
+		if _, exists := seen[v]; !exists {
+			seen[v] = true
+			ret = append(ret, v)
+		}
+	}
+	return
 }

@@ -32,7 +32,7 @@ var (
 	ctx context.Context
 
 	finnhubClient *finnhub.DefaultApiService
-	geminiClient *http.Client
+	geminiClient  *http.Client
 
 	timeSinceLastHeartbeat time.Time
 )
@@ -42,12 +42,15 @@ type tickerType int
 const (
 	crypto tickerType = iota
 	stock
+
+	botHandle = "@BrokerBot"
+	botPrefix = "!stonks"
 )
 
 func main() {
-	log.Printf("DiscordBot starting up")
-	log.Printf("DiscordBot version: %s", buildVersion)
-	log.Printf("DiscordBot build time: %s", buildTime)
+	log.Printf("BrokerBot starting up")
+	log.Printf("BrokerBot version: %s", buildVersion)
+	log.Printf("BrokerBot build time: %s", buildTime)
 	flag.Parse()
 	initTokens()
 
@@ -89,7 +92,7 @@ func main() {
 	}
 
 	shutdownlib.AddShutdownHandler(func() error {
-		log.Printf("DiscordBot shutting down connection to Discord.")
+		log.Printf("BrokerBot shutting down connection to Discord.")
 		return discordClient.Close()
 	})
 
@@ -100,7 +103,7 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("DiscordBot ready to serve on port %s", port)
+	log.Printf("BrokerBot ready to serve on port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		discordClient.Close()
 		log.Fatal(err)
@@ -126,89 +129,81 @@ func handleDefaultPort(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	log.Printf("time since last heartbeat: %s", time.Since(timeSinceLastHeartbeat))
-	/* Validation */
 	if m.Author.ID == s.State.User.ID {
-		// Prevent the bot from talking to itself.
+		// Ignore messages from self.
 		return
 	}
 
-	isBotMention, msg := hasBotMention(s, m)
+	//log.Printf("time since last heartbeat: %s", time.Since(timeSinceLastHeartbeat))
 
-	if !isBotMention {
-		// Ignore bot mentions.
+	splitMsg := strings.Fields(m.ContentWithMentionsReplaced())
+
+	if splitMsg[0] != botHandle && splitMsg[0] != botPrefix {
+		// Message wasn't meant for us.
 		return
 	}
 
-	msg = strings.TrimSpace(msg)
-	userInput := strings.TrimPrefix(msg, "!stonks ")
-	userInput = strings.ToUpper(userInput)
-	expandedString := messagelib.ExpandAliases(userInput)
-	tickers := messagelib.DedupeTickerStrings(strings.Split(expandedString, " "))
+	if len(splitMsg) < 2 {
+		// Message didn't have enough parameters.
+		messagelib.SendMessage(s, m.ChannelID,
+			strings.Join([]string{
+				"Invalid request. Acceptable formats are:",
+				fmt.Sprintf("%s <ticker> <ticker> ...", botHandle),
+				"or",
+				fmt.Sprintf("%s <ticker> <ticker> ...", botPrefix),
+			}, "\n"))
+		return
+	}
+
+	var tickers []string = splitMsg[1:]
+	tickers = messagelib.RemoveMentions(tickers)
+	tickers = messagelib.CanonicalizeMessage(tickers)
+	tickers = messagelib.ExpandAliases(tickers)
+	tickers = messagelib.DedupeSlice(tickers)
+
+	log.Printf("Received request for tickers: %s", tickers)
+
+	log.Println("Fetching crypto price feeds.")
 
 	priceFeeds, err := cryptolib.GetPriceFeeds(geminiClient)
 	if err != nil {
 		// We don't fail, because we gracefully handle no crypto price feeds in the
 		// handle crypto methods, and a request might contain multiple stock tickers
-		log.Printf("Failed to fetch Price Feeds: %s", err);
+		log.Printf("Failed to fetch crypto price feeds: %v", err)
 	}
 
-	if len(tickers) == 1 && tickers[0] == "" {
-		// TODO: Send a help message to the user.
-		log.Println("No stock tickers provided")
-		return
-	} else if len(tickers) == 1 && tickers[0] != "" {
-		log.Printf("Processing request for: %s", tickers[0])
-
-		tickerType, ticker := getTickerWithType(tickers[0])
+	var tickerValues []*messagelib.TickerValue
+	// TODO(matthewlavine): Make concurrent.
+	for _, rawTicker := range tickers {
+		ticker, tickerType := getTickerAndType(rawTicker)
 
 		switch tickerType {
 		case stock:
-			stocklib.HandleStockTicker(ctx, finnhubClient, s, m, ticker)
-		case crypto:
-			cryptolib.HandleCryptoTicker(priceFeeds, s, m, ticker)
-		}
-		return
-	} else {
-		var tickerValues []*messagelib.TickerValue
-		for _, ticker := range tickers {
-			var tickerType tickerType
-			tickerType, ticker = getTickerWithType(ticker)
-
-			switch tickerType {
-			case stock:
-				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
-				if err == nil && tickerValue != nil {
-					tickerValues = append(tickerValues, tickerValue)
-				}
-			case crypto:
-				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
-				if err == nil && tickerValue != nil {
-					tickerValues = append(tickerValues, tickerValue)
-				}
+			tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
+			if err != nil {
+				msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
+				log.Printf(fmt.Sprintf("%s: %v", msg, err))
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				continue
 			}
-		}
-		if tickerValues != nil && len(tickerValues) > 0 {
-			messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
-		}
-	}
-}
-
-func hasBotMention(s *discordgo.Session, m *discordgo.MessageCreate) (bool, string) {
-	for _, mention := range m.Mentions {
-		if mention.ID == s.State.User.ID {
-			return true, strings.NewReplacer(
-				"<@"+s.State.User.ID+"> ", "",
-				"<@!"+s.State.User.ID+"> ", "",
-			).Replace(m.Content)
+			tickerValues = append(tickerValues, tickerValue)
+		case crypto:
+			tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
+			if err != nil {
+				msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
+				log.Printf(fmt.Sprintf("%s: %v", msg, err))
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				continue
+			}
+			tickerValues = append(tickerValues, tickerValue)
 		}
 	}
-	return false, ""
+	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
 }
 
-func getTickerWithType(s string) (tickerType, string) {
+func getTickerAndType(s string) (string, tickerType) {
 	if strings.HasPrefix(s, "$") {
-		return crypto, strings.TrimPrefix(s, "$")
+		return strings.TrimPrefix(s, "$"), crypto
 	}
-	return stock, s
+	return s, stock
 }

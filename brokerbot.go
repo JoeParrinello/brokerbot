@@ -43,6 +43,7 @@ const (
 
 	botHandle = "@BrokerBot"
 	botPrefix = "!stonks"
+	helpToken = "help"
 )
 
 func main() {
@@ -137,15 +138,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	if len(splitMsg) < 2 {
+	if len(splitMsg) < 2 || splitMsg[1] == helpToken {
 		// Message didn't have enough parameters.
-		messagelib.SendMessage(s, m.ChannelID,
-			strings.Join([]string{
-				"Invalid request. Acceptable formats are:",
-				fmt.Sprintf("%s <ticker> <ticker> ...", botHandle),
-				"or",
-				fmt.Sprintf("%s <ticker> <ticker> ...", botPrefix),
-			}, "\n"))
+		messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 		return
 	}
 
@@ -203,4 +198,13 @@ func getTickerAndType(s string) (string, tickerType) {
 		return strings.TrimPrefix(s, "$"), crypto
 	}
 	return s, stock
+}
+
+func getHelpMessage() string {
+	return strings.Join([]string{
+		"Acceptable formats are:",
+		fmt.Sprintf("%s <ticker> <ticker> ...", botHandle),
+		"or",
+		fmt.Sprintf("%s <ticker> <ticker> ...", botPrefix),
+	}, "\n")
 }

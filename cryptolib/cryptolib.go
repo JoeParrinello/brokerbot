@@ -2,26 +2,18 @@ package cryptolib
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/JoeParrinello/brokerbot/messagelib"
-	"github.com/bwmarrin/discordgo"
 )
 
 const (
 	geminiBaseURL      = "https://api.gemini.com"
 	geminiPriceFeedURI = "/v1/pricefeed"
 	brokerbotUserAgent = "brokerbot"
-)
-
-var (
-	// PriceFeeds takes a request scope quotes for the Gemini Crypto Exchange.
-	PriceFeeds = contextKey("priceFeeds")
 )
 
 type contextKey string
@@ -31,29 +23,6 @@ type PriceFeed struct {
 	Pair   string `json:"pair"`
 	Price  string `json:"price"`
 	Change string `json:"percentChange24h"`
-}
-
-// HandleCryptoTicker gets a crypto quote from Finnhub and return an embed to be sent to the user.
-func HandleCryptoTicker(priceFeeds []*PriceFeed, s *discordgo.Session, m *discordgo.MessageCreate, ticker string) {
-	tickerValue, err := GetQuoteForCryptoAsset(priceFeeds, ticker)
-	if err != nil {
-		msg := fmt.Sprintf("failed to get quote for asset %q :(", ticker)
-		log.Printf(fmt.Sprintf("%s: %v", msg, err))
-		messagelib.SendMessage(s, m.ChannelID, msg)
-		return
-	}
-
-	// Empty quotes are non-existant tickers.
-	if tickerValue.Value == 0.0 {
-		msg := fmt.Sprintf("No Such Asset: %s", ticker)
-		log.Printf(msg)
-		messagelib.SendMessage(s, m.ChannelID, msg)
-		return
-	}
-
-	msgEmbed := messagelib.CreateMessageEmbed(tickerValue)
-	log.Printf("%+v", msgEmbed)
-	messagelib.SendMessageEmbed(s, m.ChannelID, msgEmbed)
 }
 
 // GetQuoteForCryptoAsset returns the TickerValue for Crypto Ticker.

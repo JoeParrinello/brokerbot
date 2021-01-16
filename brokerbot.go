@@ -163,8 +163,6 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Printf("Failed to fetch crypto price feeds: %v", err)
 	}
 
-	log.Println("Looking up tickers.")
-
 	tickerValueChan := make(chan *messagelib.TickerValue, len(tickers))
 	var wg sync.WaitGroup
 	for _, rawTicker := range tickers {

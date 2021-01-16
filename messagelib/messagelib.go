@@ -157,9 +157,9 @@ func ExpandAliases(s []string) (ret []string) {
 	for _, v := range s {
 		if strings.HasPrefix(v, "?") {
 			ret = append(ret, aliasMap[v]...)
-		} else {
-			ret = append(ret, v)
+			continue
 		}
+		ret = append(ret, v)
 	}
 	return
 }

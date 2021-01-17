@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	for t := range tickerValueChan {
 		tv = append(tv, t)
 	}
+	sort.SliceStable(tv, func(i, j int) bool {
+		r := strings.Compare(tv[i].Ticker, tv[j].Ticker)
+		if r < 0 {
+			return true
+		}
+		return false
+	})
 
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tv))
 	log.Printf("Sent response for tickers in %v: %s", time.Since(startTime), tickers)

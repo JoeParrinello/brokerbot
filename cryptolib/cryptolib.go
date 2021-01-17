@@ -72,6 +72,8 @@ func fetchPriceFeeds(geminiClient *http.Client) {
 		return
 	}
 
+	log.Printf("Crypto price feeds are older than %v, fetching update.", priceFeedAgeLimit)
+
 	var newPriceFeeds []*PriceFeed
 
 	url := geminiBaseURL + geminiPriceFeedURI

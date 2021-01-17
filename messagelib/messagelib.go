@@ -156,7 +156,12 @@ func CanonicalizeMessage(s []string) (ret []string) {
 func ExpandAliases(s []string) (ret []string) {
 	for _, v := range s {
 		if strings.HasPrefix(v, "?") {
-			ret = append(ret, aliasMap[v]...)
+			a, ok := aliasMap[v]
+			if !ok {
+				ret = append(ret, v)
+				continue
+			}
+			ret = append(ret, a...)
 			continue
 		}
 		ret = append(ret, v)

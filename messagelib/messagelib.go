@@ -15,7 +15,7 @@ var (
 )
 
 var aliasMap = map[string][]string{
-	"?CRYPTO": {"$BTC", "$ETH", "$LTC", "$LINK", "$BCH", "$COMP"},
+	"?CRYPTO": {"$BTC", "$ETH", "$LTC", "$LINK", "$BCH", "$ZEC"},
 	"?MEMES":  {"THCX", "PLUG", "FCEL", "BLDP", "NVDA"},
 	"?FAANG":  {"FB", "AMZN", "AAPL", "NFLX", "GOOG"},
 }

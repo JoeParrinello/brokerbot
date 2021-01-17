@@ -26,8 +26,6 @@ const (
 	priceFeedAgeLimit = 5 * time.Minute
 )
 
-type contextKey string
-
 // PriceFeed is a current Gemini provided ticker value.
 type PriceFeed struct {
 	Pair   string `json:"pair"`

@@ -194,6 +194,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	for t := range tickerValueChan {
 		tv = append(tv, t)
 	}
+
+	sort.Strings(tickers)
 	sort.SliceStable(tv, func(i, j int) bool {
 		r := strings.Compare(tv[i].Ticker, tv[j].Ticker)
 		if r < 0 {

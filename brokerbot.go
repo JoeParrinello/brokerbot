@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
@@ -162,34 +163,47 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Printf("Failed to fetch crypto price feeds: %v", err)
 	}
 
-	var tickerValues []*messagelib.TickerValue
-	// TODO(matthewlavine): Make concurrent.
+	tickerValueChan := make(chan *messagelib.TickerValue, len(tickers))
+	var wg sync.WaitGroup
 	for _, rawTicker := range tickers {
-		ticker, tickerType := getTickerAndType(rawTicker)
+		wg.Add(1)
 
-		switch tickerType {
-		case stock:
-			tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
-			if err != nil {
-				msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
-				log.Printf(fmt.Sprintf("%s: %v", msg, err))
-				messagelib.SendMessage(s, m.ChannelID, msg)
-				continue
+		go func(rawTicker string) {
+			defer wg.Done()
+			ticker, tickerType := getTickerAndType(rawTicker)
+
+			switch tickerType {
+			case stock:
+				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
+				if err != nil {
+					msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
+					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					messagelib.SendMessage(s, m.ChannelID, msg)
+					return
+				}
+				tickerValueChan <- tickerValue
+			case crypto:
+				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
+				if err != nil {
+					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
+					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					messagelib.SendMessage(s, m.ChannelID, msg)
+					return
+				}
+				tickerValueChan <- tickerValue
 			}
-			tickerValues = append(tickerValues, tickerValue)
-		case crypto:
-			tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
-			if err != nil {
-				msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
-				log.Printf(fmt.Sprintf("%s: %v", msg, err))
-				messagelib.SendMessage(s, m.ChannelID, msg)
-				continue
-			}
-			tickerValues = append(tickerValues, tickerValue)
-		}
+			return
+		}(rawTicker)
+	}
+	wg.Wait()
+	close(tickerValueChan)
+
+	var tv []*messagelib.TickerValue
+	for t := range tickerValueChan {
+		tv = append(tv, t)
 	}
 
-	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tickerValues))
+	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tv))
 	log.Printf("Sent response for tickers in %v: %s", time.Since(startTime), tickers)
 }
 

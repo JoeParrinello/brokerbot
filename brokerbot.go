@@ -104,8 +104,19 @@ func main() {
 		port = "8080"
 	}
 
+	server := &http.Server{
+		Addr: ":" + port,
+	}
+	shutdownlib.AddShutdownHandler((func() error {
+		log.Printf("BrokerBot shutting HTTP srever.")
+		return server.Shutdown(ctx)
+	}))
+
 	log.Printf("BrokerBot ready to serve on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := server.ListenAndServe(); err != nil {
+		if err == http.ErrServerClosed {
+			return
+		}
 		discordClient.Close()
 		log.Fatal(err)
 	}

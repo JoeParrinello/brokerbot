@@ -155,15 +155,6 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	startTime := time.Now()
 	log.Printf("Received request for tickers: %s", tickers)
 
-	log.Println("Fetching crypto price feeds.")
-
-	priceFeeds, err := cryptolib.GetPriceFeeds(geminiClient)
-	if err != nil {
-		// We don't fail, because we gracefully handle no crypto price feeds in the
-		// handle crypto methods, and a request might contain multiple stock tickers
-		log.Printf("Failed to fetch crypto price feeds: %v", err)
-	}
-
 	tickerValueChan := make(chan *messagelib.TickerValue, len(tickers))
 	var wg sync.WaitGroup
 	for _, rawTicker := range tickers {
@@ -184,7 +175,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				}
 				tickerValueChan <- tickerValue
 			case crypto:
-				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
+				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(geminiClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
 					log.Printf(fmt.Sprintf("%s: %v", msg, err))

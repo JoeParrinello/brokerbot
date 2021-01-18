@@ -108,7 +108,7 @@ func main() {
 		Addr: ":" + port,
 	}
 	shutdownlib.AddShutdownHandler((func() error {
-		log.Printf("BrokerBot shutting HTTP srever.")
+		log.Printf("BrokerBot shutting down HTTP server.")
 		return server.Shutdown(ctx)
 	}))
 

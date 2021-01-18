@@ -2,6 +2,7 @@ package cryptolib
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,14 +17,14 @@ var (
 	mu          sync.Mutex
 	priceFeeds  []*PriceFeed
 	lastUpdated time.Time
+
+	priceFeedAgeLimit = flag.Duration("priceFeedAgeLimit", 5*time.Minute, "The maximum age limit of crypto price feeds before we re-fetch them.")
 )
 
 const (
 	geminiBaseURL      = "https://api.gemini.com"
 	geminiPriceFeedURI = "/v1/pricefeed"
 	brokerbotUserAgent = "brokerbot"
-
-	priceFeedAgeLimit = 5 * time.Minute
 )
 
 // PriceFeed is a current Gemini provided ticker value.
@@ -66,11 +67,11 @@ func fetchPriceFeeds(geminiClient *http.Client) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if time.Since(lastUpdated) <= priceFeedAgeLimit {
+	if time.Since(lastUpdated) <= *priceFeedAgeLimit {
 		return
 	}
 
-	log.Printf("Crypto price feeds are older than %v, fetching update.", priceFeedAgeLimit)
+	log.Printf("Crypto price feeds are older than %v, fetching update.", *priceFeedAgeLimit)
 
 	var newPriceFeeds []*PriceFeed
 

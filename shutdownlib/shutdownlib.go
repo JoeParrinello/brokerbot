@@ -18,6 +18,7 @@ var (
 	}
 
 	shutdownHooks []func() error
+	mu            sync.Mutex
 )
 
 func init() {
@@ -28,6 +29,8 @@ func init() {
 
 // AddShutdownHandler registers a handler to be run before shutdown.
 func AddShutdownHandler(handler func() error) {
+	mu.Lock()
+	defer mu.Unlock()
 	shutdownHooks = append(shutdownHooks, handler)
 }
 

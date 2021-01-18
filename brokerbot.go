@@ -114,12 +114,12 @@ func main() {
 
 	log.Printf("BrokerBot ready to serve on port %s", port)
 	if err := server.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			return
+		if err != http.ErrServerClosed {
+			discordClient.Close()
+			log.Fatal(err)
 		}
-		discordClient.Close()
-		log.Fatal(err)
 	}
+	shutdownlib.WaitForShutdown()
 }
 
 func initTokens() {

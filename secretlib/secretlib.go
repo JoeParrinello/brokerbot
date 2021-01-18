@@ -43,7 +43,7 @@ func GetSecrets() (bool, string, string) {
 		return false, "", ""
 	}
 
-	log.Println("Got the keys from secret manager")
+	log.Println("BrokerBot loaded API keys from SecretManager")
 	return true, string(finnhubResult.GetPayload().GetData()), string(discordResult.GetPayload().GetData())
 }
 

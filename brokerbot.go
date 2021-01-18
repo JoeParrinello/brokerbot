@@ -49,11 +49,11 @@ const (
 )
 
 func main() {
+	flag.Parse()
+	initTokens()
 	log.Printf("BrokerBot starting up")
 	log.Printf("BrokerBot version: %s", buildVersion)
 	log.Printf("BrokerBot build time: %s", buildTime)
-	flag.Parse()
-	initTokens()
 
 	if *testMode {
 		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
@@ -126,6 +126,8 @@ func initTokens() {
 	if *discordToken != "" && *finnhubToken != "" {
 		return
 	}
+
+	log.SetFlags(0) // Disable timestamps when using Cloud Logging.
 
 	var ok bool
 	ok, *finnhubToken, *discordToken = secretlib.GetSecrets()

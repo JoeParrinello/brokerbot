@@ -2,12 +2,23 @@ package cryptolib
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
-	"strings"
+	"sync"
+	"time"
 
 	"github.com/JoeParrinello/brokerbot/messagelib"
+)
+
+var (
+	mu          sync.Mutex
+	priceFeeds  []*PriceFeed
+	lastUpdated time.Time
+
+	priceFeedAgeLimit = flag.Duration("priceFeedAgeLimit", 5*time.Minute, "The maximum age limit of crypto price feeds before we re-fetch them.")
 )
 
 const (
@@ -15,8 +26,6 @@ const (
 	geminiPriceFeedURI = "/v1/pricefeed"
 	brokerbotUserAgent = "brokerbot"
 )
-
-type contextKey string
 
 // PriceFeed is a current Gemini provided ticker value.
 type PriceFeed struct {
@@ -26,9 +35,9 @@ type PriceFeed struct {
 }
 
 // GetQuoteForCryptoAsset returns the TickerValue for Crypto Ticker.
-func GetQuoteForCryptoAsset(priceFeeds []*PriceFeed, asset string) (*messagelib.TickerValue, error) {
-	formattedAsset := strings.ToUpper(asset) + "USD"
-	priceFeed, ok := getPriceFeed(priceFeeds, formattedAsset)
+func GetQuoteForCryptoAsset(geminiClient *http.Client, asset string) (*messagelib.TickerValue, error) {
+	formattedAsset := asset + "USD"
+	priceFeed, ok := getFeedForAsset(geminiClient, formattedAsset)
 	if !ok {
 		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
 	}
@@ -44,30 +53,41 @@ func GetQuoteForCryptoAsset(priceFeeds []*PriceFeed, asset string) (*messagelib.
 	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change) * 100.0}, nil
 }
 
-func getPriceFeed(priceFeeds []*PriceFeed, asset string) (*PriceFeed, bool) {
-	for i := range priceFeeds {
-		if priceFeeds[i].Pair == asset {
-			return priceFeeds[i], true
+func getFeedForAsset(geminiClient *http.Client, asset string) (*PriceFeed, bool) {
+	fetchPriceFeeds(geminiClient)
+	for _, feed := range priceFeeds {
+		if feed.Pair == asset {
+			return feed, true
 		}
 	}
 	return nil, false
 }
 
-// GetPriceFeeds returns the current Price points of cryptos traded on Gemini.
-func GetPriceFeeds(geminiClient *http.Client) ([]*PriceFeed, error) {
-	var priceFeeds []*PriceFeed
+func fetchPriceFeeds(geminiClient *http.Client) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if time.Since(lastUpdated) <= *priceFeedAgeLimit {
+		return
+	}
+
+	log.Printf("Crypto price feeds are older than %v, fetching update.", *priceFeedAgeLimit)
+
+	var newPriceFeeds []*PriceFeed
 
 	url := geminiBaseURL + geminiPriceFeedURI
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		log.Printf("failed to create request for crypto price feeds: %v", err)
+		return
 	}
 
 	req.Header.Set("User-Agent", brokerbotUserAgent)
 
 	res, getErr := geminiClient.Do(req)
 	if getErr != nil {
-		return nil, getErr
+		log.Printf("failed to execute request for crypto price feeds: %v", err)
+		return
 	}
 
 	if res.Body != nil {
@@ -76,13 +96,16 @@ func GetPriceFeeds(geminiClient *http.Client) ([]*PriceFeed, error) {
 
 	body, readErr := ioutil.ReadAll(res.Body)
 	if readErr != nil {
-		return nil, readErr
+		log.Printf("failed to read crypto price feed response: %v", err)
+		return
 	}
 
-	unmarshalErr := json.Unmarshal(body, &priceFeeds)
+	unmarshalErr := json.Unmarshal(body, &newPriceFeeds)
 	if unmarshalErr != nil {
-		return nil, unmarshalErr
+		log.Printf("failed to unmarshal crypto price feed response: %v", err)
+		return
 	}
 
-	return priceFeeds, nil
+	priceFeeds = newPriceFeeds
+	lastUpdated = time.Now()
 }

@@ -49,11 +49,11 @@ const (
 )
 
 func main() {
+	flag.Parse()
+	initTokens()
 	log.Printf("BrokerBot starting up")
 	log.Printf("BrokerBot version: %s", buildVersion)
 	log.Printf("BrokerBot build time: %s", buildTime)
-	flag.Parse()
-	initTokens()
 
 	if *testMode {
 		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
@@ -104,17 +104,30 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("BrokerBot ready to serve on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		discordClient.Close()
-		log.Fatal(err)
+	httpServer := &http.Server{
+		Addr: ":" + port,
 	}
+	shutdownlib.AddShutdownHandler((func() error {
+		log.Printf("BrokerBot shutting down HTTP server.")
+		return httpServer.Shutdown(ctx)
+	}))
+
+	log.Printf("BrokerBot ready to serve on port %s", port)
+	if err := httpServer.ListenAndServe(); err != nil {
+		if err != http.ErrServerClosed {
+			discordClient.Close()
+			log.Fatal(err)
+		}
+	}
+	shutdownlib.WaitForShutdown()
 }
 
 func initTokens() {
 	if *discordToken != "" && *finnhubToken != "" {
 		return
 	}
+
+	log.SetFlags(0) // Disable timestamps when using Cloud Logging.
 
 	var ok bool
 	ok, *finnhubToken, *discordToken = secretlib.GetSecrets()
@@ -155,15 +168,6 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	startTime := time.Now()
 	log.Printf("Received request for tickers: %s", tickers)
 
-	log.Println("Fetching crypto price feeds.")
-
-	priceFeeds, err := cryptolib.GetPriceFeeds(geminiClient)
-	if err != nil {
-		// We don't fail, because we gracefully handle no crypto price feeds in the
-		// handle crypto methods, and a request might contain multiple stock tickers
-		log.Printf("Failed to fetch crypto price feeds: %v", err)
-	}
-
 	tickerValueChan := make(chan *messagelib.TickerValue, len(tickers))
 	var wg sync.WaitGroup
 	for _, rawTicker := range tickers {
@@ -184,7 +188,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				}
 				tickerValueChan <- tickerValue
 			case crypto:
-				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(priceFeeds, ticker)
+				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(geminiClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
 					log.Printf(fmt.Sprintf("%s: %v", msg, err))
@@ -203,6 +207,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	for t := range tickerValueChan {
 		tv = append(tv, t)
 	}
+
+	sort.Strings(tickers)
 	sort.SliceStable(tv, func(i, j int) bool {
 		r := strings.Compare(tv[i].Ticker, tv[j].Ticker)
 		if r < 0 {

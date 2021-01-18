@@ -45,9 +45,7 @@ func AddShutdownHandler(handler func() error) {
 }
 
 func shutdownHandler(sigChan chan os.Signal) {
-	for {
-		sig := <-sigChan
-
+	for sig := range sigChan {
 		go func(sig os.Signal) {
 			// If we get a second kill signal, exit immediately.
 			mu.Lock()

@@ -46,6 +46,7 @@ func AddShutdownHandler(handler func() error) {
 
 func shutdownHandler(sigChan chan os.Signal) {
 	for sig := range sigChan {
+		fmt.Println() // Spacer to account for ^C in terminal output.
 		go func(sig os.Signal) {
 			// If we get a second kill signal, exit immediately.
 			mu.Lock()
@@ -56,7 +57,6 @@ func shutdownHandler(sigChan chan os.Signal) {
 			isShutdown = true
 			mu.Unlock()
 
-			fmt.Println() // Spacer to account for ^C in terminal output.
 			log.Printf("Caught signal %q, running %d shutdown handlers.", sig, len(shutdownHooks))
 
 			var wg sync.WaitGroup

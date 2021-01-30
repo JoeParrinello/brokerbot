@@ -35,6 +35,8 @@ var (
 
 	finnhubClient *finnhub.DefaultApiService
 	geminiClient  *http.Client
+
+	botPrefixes = []string{"!stonks", "!stnosk", "!stonsk"}
 )
 
 type tickerType int
@@ -44,7 +46,6 @@ const (
 	stock
 
 	botHandle = "@BrokerBot"
-	botPrefix = "!stonks"
 	helpToken = "help"
 )
 
@@ -148,9 +149,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	splitMsg := strings.Fields(m.ContentWithMentionsReplaced())
 
-	if splitMsg[0] != botHandle && splitMsg[0] != botPrefix {
-		// Message wasn't meant for us.
+	if splitMsg[0] != botHandle && !contains(botPrefixes, splitMsg[0]) {
 		return
+		// Message wasn't meant for us.
 	}
 
 	if len(splitMsg) < 2 || splitMsg[1] == helpToken {
@@ -233,6 +234,15 @@ func getHelpMessage() string {
 		"Acceptable formats are:",
 		fmt.Sprintf("%s <ticker> <ticker> ...", botHandle),
 		"or",
-		fmt.Sprintf("%s <ticker> <ticker> ...", botPrefix),
+		fmt.Sprintf("%s <ticker> <ticker> ...", botPrefixes[0]),
 	}, "\n")
+}
+
+func contains(s []string, v string) bool {
+	for _, a := range s {
+		if a == v {
+			return true
+		}
+	}
+	return false
 }

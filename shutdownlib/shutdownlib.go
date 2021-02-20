@@ -17,9 +17,9 @@ var (
 		syscall.SIGQUIT,
 	}
 
-	isShutdown    bool
-	shutdownHooks []func() error
-	mu            sync.Mutex
+	isShutdown       bool
+	shutdownHandlers []func() error
+	mu               sync.Mutex
 
 	shutdownChan = make(chan struct{})
 )
@@ -41,7 +41,7 @@ func WaitForShutdown() {
 func AddShutdownHandler(handler func() error) {
 	mu.Lock()
 	defer mu.Unlock()
-	shutdownHooks = append(shutdownHooks, handler)
+	shutdownHandlers = append(shutdownHandlers, handler)
 }
 
 func shutdownHandler(sigChan chan os.Signal) {
@@ -57,10 +57,10 @@ func shutdownHandler(sigChan chan os.Signal) {
 			isShutdown = true
 			mu.Unlock()
 
-			log.Printf("Caught signal %q, running %d shutdown handlers.", sig, len(shutdownHooks))
+			log.Printf("Caught signal %q, running %d shutdown handlers.", sig, len(shutdownHandlers))
 
 			var wg sync.WaitGroup
-			for _, hook := range shutdownHooks {
+			for _, hook := range shutdownHandlers {
 				wg.Add(1)
 				go func(hook func() error) {
 					defer wg.Done()

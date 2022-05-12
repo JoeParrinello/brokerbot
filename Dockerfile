@@ -1,17 +1,15 @@
-# Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
 FROM golang:1.18
+
+WORKDIR $GOPATH/src/brokerbot
+
+# pre-copy/cache go.mod for pre-downloading dependencies and only redownload them in subsequent builds if they change
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 
 ARG BUILD_VERSION=development
 ARG BUILD_TIME=0
 
-# Copy the local package files to the container's workspace
-ADD . /go/src/brokerbot
+COPY . .
+RUN go build -v  -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" -o $GOPATH/bin/brokerbot .
 
-# Build the brokerbot command inside the container.
-RUN go env -w GO111MODULE=off
-RUN go get -v /go/src/brokerbot
-RUN go install -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" /go/src/brokerbot
-
-# Run the brokerbot
-ENTRYPOINT /go/bin/brokerbot
+CMD ["brokerbot"]

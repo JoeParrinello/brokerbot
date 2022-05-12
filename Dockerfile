@@ -1,6 +1,6 @@
 # Start from a Debian image with the latest version of Go installed
 # and a workspace (GOPATH) configured at /go.
-FROM golang
+FROM golang:1.18
 
 ARG BUILD_VERSION=development
 ARG BUILD_TIME=0
@@ -9,6 +9,7 @@ ARG BUILD_TIME=0
 ADD . /go/src/brokerbot
 
 # Build the brokerbot command inside the container.
+RUN go env -w GO111MODULE=off
 RUN go get -v /go/src/brokerbot
 RUN go install -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" /go/src/brokerbot
 

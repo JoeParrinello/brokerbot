@@ -149,9 +149,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	splitMsg := strings.Fields(m.ContentWithMentionsReplaced())
 
-	if splitMsg[0] != botHandle && !contains(botPrefixes, splitMsg[0]) {
+	if len(splitMsg) == 0 {
+		// Message had no text and was probably an image.
 		return
+	}
+
+	if splitMsg[0] != botHandle && !contains(botPrefixes, splitMsg[0]) {
 		// Message wasn't meant for us.
+		return
 	}
 
 	if len(splitMsg) < 2 || splitMsg[1] == helpToken {

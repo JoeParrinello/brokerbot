@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/secretmanager v1.4.0
 	github.com/Finnhub-Stock-API/finnhub-go v1.2.1
 	github.com/bwmarrin/discordgo v0.25.0
+	github.com/kr/pretty v0.1.0
 	github.com/zokypesch/proto-lib v3.1.1+incompatible
 	google.golang.org/genproto v0.0.0-20220505152158-f39f71e6c8f3
 )
@@ -20,6 +21,7 @@ require (
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/kr/text v0.1.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/sony/sonyflake v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect

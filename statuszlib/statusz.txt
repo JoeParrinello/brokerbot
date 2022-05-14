@@ -1,0 +1,9 @@
+BrokerBot Statusz
+
+request count: {{.}}
+
+success count: {{.}}
+
+error count: {{.}}
+
+cache content: <nil>

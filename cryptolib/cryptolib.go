@@ -63,6 +63,18 @@ func getFeedForAsset(geminiClient *http.Client, asset string) (*PriceFeed, bool)
 	return nil, false
 }
 
+func GetLatestPriceFeed() []*PriceFeed {
+	mu.Lock()
+	defer mu.Unlock()
+	return priceFeeds
+}
+
+func GetLatestPriceFeedUpdateTime() time.Time {
+	mu.Lock()
+	defer mu.Unlock()
+	return lastUpdated
+}
+
 func fetchPriceFeeds(geminiClient *http.Client) {
 	mu.Lock()
 	defer mu.Unlock()

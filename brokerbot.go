@@ -57,6 +57,9 @@ func main() {
 	log.Printf("BrokerBot version: %s", buildVersion)
 	log.Printf("BrokerBot build time: %s", buildTime)
 
+	statuszlib.SetBuildVersion(buildVersion)
+	statuszlib.SetBuildTime(buildTime)
+
 	if *testMode {
 		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
 	}

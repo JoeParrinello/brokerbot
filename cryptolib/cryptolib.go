@@ -3,6 +3,7 @@ package cryptolib
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,6 +20,22 @@ var (
 	lastUpdated time.Time
 
 	priceFeedAgeLimit = flag.Duration("priceFeedAgeLimit", 5*time.Minute, "The maximum age limit of crypto price feeds before we re-fetch them.")
+
+	cryptoNames = map[string]string{
+		"BTC":  "Bitcoin",
+		"LTC":  "Litecoin",
+		"ETH":  "Ethereum",
+		"DOGE": "Dogecoin",
+		"XRP":  "Ripple",
+		"BCH":  "Bitcoin Cash",
+		"USDT": "Tether",
+		"ZEC":  "Zcash",
+		"LINK": "Chainlink",
+		"DOT":  "Polkadot",
+		"XMR":  "Monero",
+		"LUNA": "Terra",
+		"DASH": "Dash",
+	}
 )
 
 const (
@@ -39,18 +56,18 @@ func GetQuoteForCryptoAsset(geminiClient *http.Client, asset string) (*messageli
 	formattedAsset := asset + "USD"
 	priceFeed, ok := getFeedForAsset(geminiClient, formattedAsset)
 	if !ok {
-		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
+		return &messagelib.TickerValue{Ticker: assetWithName(asset), Value: 0.0, Change: 0.0}, nil
 	}
 
 	price, err := strconv.ParseFloat(priceFeed.Price, 32)
 	if err != nil {
-		return &messagelib.TickerValue{Ticker: asset, Value: 0.0, Change: 0.0}, nil
+		return &messagelib.TickerValue{Ticker: assetWithName(asset), Value: 0.0, Change: 0.0}, nil
 	}
 	change, err := strconv.ParseFloat(priceFeed.Change, 32)
 	if err != nil {
-		return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: 0.0}, nil
+		return &messagelib.TickerValue{Ticker: assetWithName(asset), Value: float32(price), Change: 0.0}, nil
 	}
-	return &messagelib.TickerValue{Ticker: asset, Value: float32(price), Change: float32(change) * 100.0}, nil
+	return &messagelib.TickerValue{Ticker: assetWithName(asset), Value: float32(price), Change: float32(change) * 100.0}, nil
 }
 
 func getFeedForAsset(geminiClient *http.Client, asset string) (*PriceFeed, bool) {
@@ -61,6 +78,14 @@ func getFeedForAsset(geminiClient *http.Client, asset string) (*PriceFeed, bool)
 		}
 	}
 	return nil, false
+}
+
+func assetWithName(asset string) string {
+	name, ok := cryptoNames[asset]
+	if !ok {
+		return asset
+	}
+	return fmt.Sprintf("%s (%s)", asset, name)
 }
 
 func GetLatestPriceFeed() []*PriceFeed {

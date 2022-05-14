@@ -18,6 +18,7 @@ import (
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/JoeParrinello/brokerbot/secretlib"
 	"github.com/JoeParrinello/brokerbot/shutdownlib"
+	"github.com/JoeParrinello/brokerbot/statuszlib"
 	"github.com/JoeParrinello/brokerbot/stocklib"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zokypesch/proto-lib/utils"
@@ -100,6 +101,8 @@ func main() {
 
 	http.HandleFunc("/", handleDefaultPort)
 
+	http.HandleFunc("/statusz", statuszlib.HandleStatusz)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -165,6 +168,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	statuszlib.RecordRequest()
+
 	var tickers []string = splitMsg[1:]
 	tickers = messagelib.RemoveMentions(tickers)
 	tickers = messagelib.CanonicalizeMessage(tickers)
@@ -190,6 +195,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
 					log.Printf(fmt.Sprintf("%s: %v", msg, err))
 					messagelib.SendMessage(s, m.ChannelID, msg)
+					statuszlib.RecordError()
 					return
 				}
 				tickerValueChan <- tickerValue
@@ -199,11 +205,11 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
 					log.Printf(fmt.Sprintf("%s: %v", msg, err))
 					messagelib.SendMessage(s, m.ChannelID, msg)
+					statuszlib.RecordError()
 					return
 				}
 				tickerValueChan <- tickerValue
 			}
-			return
 		}(rawTicker)
 	}
 	wg.Wait()
@@ -225,6 +231,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tv))
 	log.Printf("Sent response for tickers in %v: %s", time.Since(startTime), tickers)
+	statuszlib.RecordSuccess()
 }
 
 func getTickerAndType(s string) (string, tickerType) {

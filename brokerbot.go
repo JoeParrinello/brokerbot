@@ -193,7 +193,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
-					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					log.Printf("%s: %v", msg, err)
 					messagelib.SendMessage(s, m.ChannelID, msg)
 					statuszlib.RecordError()
 					return
@@ -203,7 +203,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(geminiClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
-					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					log.Printf("%s: %v", msg, err)
 					messagelib.SendMessage(s, m.ChannelID, msg)
 					statuszlib.RecordError()
 					return

@@ -223,10 +223,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	sort.Strings(tickers)
 	sort.SliceStable(tv, func(i, j int) bool {
 		r := strings.Compare(tv[i].Ticker, tv[j].Ticker)
-		if r < 0 {
-			return true
-		}
-		return false
+		return r < 0
 	})
 
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tv))

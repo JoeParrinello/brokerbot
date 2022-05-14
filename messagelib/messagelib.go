@@ -18,6 +18,7 @@ var aliasMap = map[string][]string{
 	"?CRYPTO": {"$BTC", "$ETH", "$LTC", "$LINK", "$BCH", "$ZEC"},
 	"?MEMES":  {"THCX", "PLUG", "FCEL", "BLDP", "NVDA"},
 	"?FAANG":  {"FB", "AMZN", "AAPL", "NFLX", "GOOG"},
+	"?MAMAA":  {"FB", "AMZN", "AAPL", "MSFT", "GOOG"},
 }
 
 // TickerValue passes values of fetched content.

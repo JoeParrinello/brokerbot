@@ -18,6 +18,7 @@ import (
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/JoeParrinello/brokerbot/secretlib"
 	"github.com/JoeParrinello/brokerbot/shutdownlib"
+	"github.com/JoeParrinello/brokerbot/statuszlib"
 	"github.com/JoeParrinello/brokerbot/stocklib"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zokypesch/proto-lib/utils"
@@ -55,6 +56,9 @@ func main() {
 	log.Printf("BrokerBot starting up")
 	log.Printf("BrokerBot version: %s", buildVersion)
 	log.Printf("BrokerBot build time: %s", buildTime)
+
+	statuszlib.SetBuildVersion(buildVersion)
+	statuszlib.SetBuildTime(buildTime)
 
 	if *testMode {
 		messagelib.EnterTestModeWithPrefix(utils.RandStringBytesMaskImprSrcUnsafe(6))
@@ -99,6 +103,8 @@ func main() {
 	})
 
 	http.HandleFunc("/", handleDefaultPort)
+
+	http.HandleFunc("/statusz", statuszlib.HandleStatusz)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -165,6 +171,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	statuszlib.RecordRequest()
+
 	var tickers []string = splitMsg[1:]
 	tickers = messagelib.RemoveMentions(tickers)
 	tickers = messagelib.CanonicalizeMessage(tickers)
@@ -188,8 +196,9 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				tickerValue, err := stocklib.GetQuoteForStockTicker(ctx, finnhubClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for stock ticker: %q (See logs)", ticker)
-					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					log.Printf("%s: %v", msg, err)
 					messagelib.SendMessage(s, m.ChannelID, msg)
+					statuszlib.RecordError()
 					return
 				}
 				tickerValueChan <- tickerValue
@@ -197,13 +206,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(geminiClient, ticker)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to get quote for crypto ticker: %q (See logs)", ticker)
-					log.Printf(fmt.Sprintf("%s: %v", msg, err))
+					log.Printf("%s: %v", msg, err)
 					messagelib.SendMessage(s, m.ChannelID, msg)
+					statuszlib.RecordError()
 					return
 				}
 				tickerValueChan <- tickerValue
 			}
-			return
 		}(rawTicker)
 	}
 	wg.Wait()
@@ -217,14 +226,12 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	sort.Strings(tickers)
 	sort.SliceStable(tv, func(i, j int) bool {
 		r := strings.Compare(tv[i].Ticker, tv[j].Ticker)
-		if r < 0 {
-			return true
-		}
-		return false
+		return r < 0
 	})
 
 	messagelib.SendMessageEmbed(s, m.ChannelID, messagelib.CreateMultiMessageEmbed(tv))
 	log.Printf("Sent response for tickers in %v: %s", time.Since(startTime), tickers)
+	statuszlib.RecordSuccess()
 }
 
 func getTickerAndType(s string) (string, tickerType) {

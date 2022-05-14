@@ -106,6 +106,9 @@ func main() {
 
 	http.HandleFunc("/statusz", statuszlib.HandleStatusz)
 
+	// Google Cloud blocks /statusz, so also bind to /status
+	http.HandleFunc("/status", statuszlib.HandleStatusz)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -69,9 +70,9 @@ func createMessageEmbedWithPrefix(tickerValue *TickerValue, prefix string) *disc
 		return nil
 	}
 
-	mesg := fmt.Sprintf("Latest Quote: $%.2f", tickerValue.Value)
+	mesg := fmt.Sprintf("Latest Quote: $%s", formatFloat(tickerValue.Value, 4))
 	if !math.IsNaN(float64(tickerValue.Change)) && tickerValue.Change != 0 {
-		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, tickerValue.Change)
+		mesg = fmt.Sprintf("%s (%s%%)", mesg, formatFloat(tickerValue.Change, 4))
 	}
 	return &discordgo.MessageEmbed{
 		Title:       tickerValue.Ticker,
@@ -110,15 +111,20 @@ func createMessageEmbedField(tickerValue *TickerValue) *discordgo.MessageEmbedFi
 		}
 	}
 
-	mesg := fmt.Sprintf("$%.2f", tickerValue.Value)
+	mesg := fmt.Sprintf("$%s", formatFloat(tickerValue.Value, 4))
 	if !math.IsNaN(float64(tickerValue.Change)) && tickerValue.Change != 0 {
-		mesg = fmt.Sprintf("%s (%.2f%%)", mesg, tickerValue.Change)
+		mesg = fmt.Sprintf("%s (%s%%)", mesg, formatFloat(tickerValue.Change, 4))
 	}
 	return &discordgo.MessageEmbedField{
 		Name:   tickerValue.Ticker,
 		Value:  mesg,
 		Inline: false,
 	}
+}
+
+func formatFloat(num float32, prc int) string {
+	str := fmt.Sprintf("%."+strconv.Itoa(prc)+"f", num)
+	return strings.TrimRight(strings.TrimRight(str, "0"), ".")
 }
 
 func getMessagePrefix() string {

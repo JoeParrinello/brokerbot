@@ -2,9 +2,11 @@ package stocklib
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/JoeParrinello/brokerbot/messagelib"
+	"github.com/antihax/optional"
 )
 
 // GetQuoteForStockTicker returns the TickerValue for the provided ticker
@@ -18,8 +20,19 @@ func GetQuoteForStockTicker(ctx context.Context, f *finnhub.DefaultApiService, t
 		return &messagelib.TickerValue{Ticker: ticker, Value: 0.0, Change: 0.0}, nil
 	}
 	dailyChangePercent := ((quote.C - quote.Pc) / quote.Pc) * 100
+	company, _, err := f.CompanyProfile2(ctx, &finnhub.CompanyProfile2Opts{
+		Symbol: optional.NewString(ticker),
+	})
+	companyName := company.Name
+	if err != nil {
+		fmt.Printf("Company lookup failed, ignoring: %v", err)
+		companyName = "Error"
+	}
+	if companyName == "" {
+		companyName = "Unknown"
+	}
 	return &messagelib.TickerValue{
-		Ticker: ticker,
+		Ticker: fmt.Sprintf("%s (%s)", ticker, companyName),
 		Value:  quote.C,
 		Change: dailyChangePercent,
 	}, nil

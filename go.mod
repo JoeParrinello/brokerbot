@@ -5,6 +5,7 @@ go 1.18
 require (
 	cloud.google.com/go/secretmanager v1.4.0
 	github.com/Finnhub-Stock-API/finnhub-go v1.2.1
+	github.com/antihax/optional v1.0.0
 	github.com/bwmarrin/discordgo v0.25.0
 	github.com/zokypesch/proto-lib v3.1.1+incompatible
 	google.golang.org/genproto v0.0.0-20220505152158-f39f71e6c8f3
@@ -14,7 +15,6 @@ require (
 	cloud.google.com/go v0.101.1 // indirect
 	cloud.google.com/go/compute v1.6.1 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
-	github.com/antihax/optional v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect

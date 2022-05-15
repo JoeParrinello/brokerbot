@@ -15,6 +15,7 @@ import (
 
 	"github.com/Finnhub-Stock-API/finnhub-go"
 	"github.com/JoeParrinello/brokerbot/cryptolib"
+	"github.com/JoeParrinello/brokerbot/firestorelib"
 	"github.com/JoeParrinello/brokerbot/messagelib"
 	"github.com/JoeParrinello/brokerbot/secretlib"
 	"github.com/JoeParrinello/brokerbot/shutdownlib"
@@ -46,8 +47,9 @@ const (
 	crypto tickerType = iota
 	stock
 
-	botHandle = "@BrokerBot"
-	helpToken = "help"
+	aliasToken = "alias"
+	botHandle  = "@BrokerBot"
+	helpToken  = "help"
 )
 
 func main() {
@@ -102,6 +104,8 @@ func main() {
 		log.Printf("BrokerBot shutting down connection to Discord.")
 		return discordClient.Close()
 	})
+
+	firestorelib.Init()
 
 	http.HandleFunc("/", handleDefaultPort)
 
@@ -169,18 +173,75 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	statuszlib.RecordRequest()
+
 	if len(splitMsg) < 2 || splitMsg[1] == helpToken {
 		// Message didn't have enough parameters.
 		messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 		return
 	}
 
-	statuszlib.RecordRequest()
+	if splitMsg[1] == aliasToken {
+		if len(splitMsg) < 4 {
+			// Message didn't have enough parameters.
+			messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
+			return
+		}
+		switch splitMsg[2] {
+		case "get":
+			alias, err := firestorelib.GetAlias(ctx, splitMsg[3])
+			if err != nil {
+				msg := fmt.Sprintf("failed to get alias: %v", err)
+				log.Println(msg)
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				statuszlib.RecordError()
+				return
+			}
+			messagelib.SendMessage(s, m.ChannelID, strings.Join(alias, ", "))
+			statuszlib.RecordSuccess()
+		case "set":
+			if len(splitMsg) < 5 || !strings.HasPrefix(splitMsg[3], "?") {
+				// Message didn't have enough parameters.
+				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
+				return
+			}
+			if err := firestorelib.CreateAlias(ctx, splitMsg[3], splitMsg[4:]); err != nil {
+				msg := fmt.Sprintf("failed to create alias: %v", err)
+				log.Println(msg)
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				statuszlib.RecordError()
+				return
+			}
+			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Created alias %q", splitMsg[3]))
+			statuszlib.RecordSuccess()
+		case "delete":
+			if err := firestorelib.DeleteAlias(ctx, splitMsg[3]); err != nil {
+				msg := fmt.Sprintf("failed to delete alias: %v", err)
+				log.Println(msg)
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				statuszlib.RecordError()
+				return
+			}
+			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Deleted alias %q", splitMsg[3]))
+			statuszlib.RecordSuccess()
+		}
+		return
+	}
 
 	var tickers []string = splitMsg[1:]
 	tickers = messagelib.RemoveMentions(tickers)
 	tickers = messagelib.CanonicalizeMessage(tickers)
-	tickers = messagelib.ExpandAliases(tickers)
+
+	var err error
+	tickers, err = messagelib.ExpandAliases(ctx, tickers)
+	if err != nil {
+		msg := fmt.Sprintf("failed to expand aliases: %v", err)
+		log.Println(msg)
+		messagelib.SendMessage(s, m.ChannelID, msg)
+		statuszlib.RecordError()
+		return
+	}
+
 	tickers = messagelib.DedupeSlice(tickers)
 
 	startTime := time.Now()
@@ -247,10 +308,16 @@ func getTickerAndType(s string) (string, tickerType) {
 
 func getHelpMessage() string {
 	return strings.Join([]string{
-		"Acceptable formats are:",
-		fmt.Sprintf("%s <ticker> <ticker> ...", botHandle),
-		"or",
-		fmt.Sprintf("%s <ticker> <ticker> ...", botPrefixes[0]),
+		"Invoke bot with either:",
+		"  @BrokerBot <ticker> <ticker> ...",
+		"  or",
+		"  !stonks <ticker> <ticker> ...",
+		"",
+		"Other commands:",
+		"  !stonks help",
+		"  !stonks alias get ?<alias>",
+		"  !stonks alias set ?<alias> <ticker> <ticker> ...",
+		"  !stonks alias delete ?<alias>",
 	}, "\n")
 }
 

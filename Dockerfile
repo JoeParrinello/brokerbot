@@ -12,4 +12,4 @@ ARG BUILD_TIME=0
 COPY . .
 RUN go build -v  -ldflags "-X main.buildVersion=$BUILD_VERSION -X main.buildTime=$BUILD_TIME" -o $GOPATH/bin/brokerbot .
 
-CMD ["brokerbot"]
+CMD ["brokerbot", "--project=memes-300201"]

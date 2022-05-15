@@ -13,6 +13,9 @@ brokerbot
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Google Cloud Credentials
+credentials/
+
 # Dockerfiles for local dev
 Dockerfile.dev
 

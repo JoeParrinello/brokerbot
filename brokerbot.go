@@ -182,13 +182,39 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if splitMsg[1] == aliasToken {
-		if len(splitMsg) < 4 {
+		if len(splitMsg) < 3 {
 			// Message didn't have enough parameters.
 			messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 			return
 		}
 		switch splitMsg[2] {
+		case "list":
+			if len(splitMsg) < 3 {
+				// Message didn't have enough parameters.
+				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
+				return
+			}
+			aliases, err := firestorelib.GetAliases(ctx)
+			if err != nil {
+				msg := fmt.Sprintf("failed to get alias: %v", err)
+				log.Println(msg)
+				messagelib.SendMessage(s, m.ChannelID, msg)
+				statuszlib.RecordError()
+				return
+			}
+			var b strings.Builder
+			for alias, assets := range aliases {
+				b.WriteString(fmt.Sprintf("%s: %s\n", alias, strings.Join(assets, ", ")))
+			}
+			messagelib.SendMessage(s, m.ChannelID, b.String())
+			statuszlib.RecordSuccess()
+			return
 		case "get":
+			if len(splitMsg) < 4 {
+				// Message didn't have enough parameters.
+				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
+				return
+			}
 			alias, err := firestorelib.GetAlias(ctx, splitMsg[3])
 			if err != nil {
 				msg := fmt.Sprintf("failed to get alias: %v", err)
@@ -199,6 +225,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			messagelib.SendMessage(s, m.ChannelID, strings.Join(alias, ", "))
 			statuszlib.RecordSuccess()
+			return
 		case "set":
 			if len(splitMsg) < 5 || !strings.HasPrefix(splitMsg[3], "?") {
 				// Message didn't have enough parameters.
@@ -214,7 +241,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Created alias %q", splitMsg[3]))
 			statuszlib.RecordSuccess()
+			return
 		case "delete":
+			if len(splitMsg) < 4 {
+				// Message didn't have enough parameters.
+				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
+				return
+			}
 			if err := firestorelib.DeleteAlias(ctx, splitMsg[3]); err != nil {
 				msg := fmt.Sprintf("failed to delete alias: %v", err)
 				log.Println(msg)
@@ -224,7 +257,10 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Deleted alias %q", splitMsg[3]))
 			statuszlib.RecordSuccess()
+			return
 		}
+		// Message didn't have enough parameters.
+		messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 		return
 	}
 
@@ -315,6 +351,7 @@ func getHelpMessage() string {
 		"",
 		"Other commands:",
 		"  !stonks help",
+		"  !stonks alias list",
 		"  !stonks alias get ?<alias>",
 		"  !stonks alias set ?<alias> <ticker> <ticker> ...",
 		"  !stonks alias delete ?<alias>",

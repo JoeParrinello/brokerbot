@@ -73,6 +73,7 @@ func main() {
 	geminiClient = &http.Client{
 		Timeout: time.Second * 30,
 	}
+	cryptolib.FetchPriceFeeds(geminiClient)
 
 	discordClient, err := discordgo.New("Bot " + *discordToken)
 	if err != nil {

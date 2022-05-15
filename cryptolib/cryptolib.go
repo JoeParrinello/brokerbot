@@ -71,7 +71,7 @@ func GetQuoteForCryptoAsset(geminiClient *http.Client, asset string) (*messageli
 }
 
 func getFeedForAsset(geminiClient *http.Client, asset string) (*PriceFeed, bool) {
-	fetchPriceFeeds(geminiClient)
+	FetchPriceFeeds(geminiClient)
 	for _, feed := range priceFeeds {
 		if feed.Pair == asset {
 			return feed, true
@@ -100,7 +100,7 @@ func GetLatestPriceFeedUpdateTime() time.Time {
 	return lastUpdated
 }
 
-func fetchPriceFeeds(geminiClient *http.Client) {
+func FetchPriceFeeds(geminiClient *http.Client) {
 	mu.Lock()
 	defer mu.Unlock()
 

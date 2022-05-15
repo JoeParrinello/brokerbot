@@ -1,12 +1,14 @@
 package messagelib
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
 	"strconv"
 	"strings"
 
+	"github.com/JoeParrinello/brokerbot/firestorelib"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -14,13 +16,6 @@ var (
 	test          bool   = false
 	messagePrefix string = "TEST"
 )
-
-var aliasMap = map[string][]string{
-	"?CRYPTO": {"$BTC", "$ETH", "$LTC", "$LINK", "$BCH", "$ZEC"},
-	"?MEMES":  {"THCX", "PLUG", "FCEL", "BLDP", "NVDA"},
-	"?FAANG":  {"FB", "AMZN", "AAPL", "NFLX", "GOOG"},
-	"?MAMAA":  {"FB", "AMZN", "AAPL", "MSFT", "GOOG"},
-}
 
 // TickerValue passes values of fetched content.
 type TickerValue struct {
@@ -160,7 +155,12 @@ func CanonicalizeMessage(s []string) (ret []string) {
 }
 
 // ExpandAliases takes a string that contains an alias of format "?<alias>" and replaces the alias with the valid ticker string.
-func ExpandAliases(s []string) (ret []string) {
+func ExpandAliases(ctx context.Context, s []string) ([]string, error) {
+	var ret []string
+	aliasMap, err := firestorelib.GetAliases(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch aliases: %v", err)
+	}
 	for _, v := range s {
 		if strings.HasPrefix(v, "?") {
 			a, ok := aliasMap[v]
@@ -173,7 +173,7 @@ func ExpandAliases(s []string) (ret []string) {
 		}
 		ret = append(ret, v)
 	}
-	return
+	return ret, nil
 }
 
 // DedupeSlice returns a list of unique tickers from the provided string slice.

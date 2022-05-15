@@ -3,11 +3,13 @@ module github.com/JoeParrinello/brokerbot
 go 1.18
 
 require (
+	cloud.google.com/go/firestore v1.6.1
 	cloud.google.com/go/secretmanager v1.4.0
 	github.com/Finnhub-Stock-API/finnhub-go v1.2.1
 	github.com/antihax/optional v1.0.0
 	github.com/bwmarrin/discordgo v0.25.0
 	github.com/zokypesch/proto-lib v3.1.1+incompatible
+	google.golang.org/api v0.79.0
 	google.golang.org/genproto v0.0.0-20220505152158-f39f71e6c8f3
 )
 
@@ -28,7 +30,7 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/api v0.79.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/grpc v1.46.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect

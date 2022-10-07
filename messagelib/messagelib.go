@@ -19,9 +19,10 @@ var (
 
 // TickerValue passes values of fetched content.
 type TickerValue struct {
-	Ticker string
-	Value  float32
-	Change float32
+	Ticker   string
+	Value    float32
+	Change   float32
+	ChartUrl string
 }
 
 // EnterTestModeWithPrefix enables extra log prefixes to identify a test server.
@@ -88,6 +89,17 @@ func createMultiMessageEmbedWithPrefix(tickers []*TickerValue, prefix string) *d
 	messageFields := make([]*discordgo.MessageEmbedField, len(tickers))
 	for i, ticker := range tickers {
 		messageFields[i] = createMessageEmbedField(ticker)
+	}
+	if len(tickers) == 1 && tickers[0].ChartUrl != "" {
+		return &discordgo.MessageEmbed{
+			Fields: messageFields,
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: prefix,
+			},
+			Image: &discordgo.MessageEmbedImage{
+				URL: tickers[0].ChartUrl,
+			},
+		}
 	}
 	return &discordgo.MessageEmbed{
 		Fields: messageFields,

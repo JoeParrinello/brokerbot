@@ -32,11 +32,13 @@ var (
 	discordToken = flag.String("t", "", "Discord Token")
 	finnhubToken = flag.String("finnhub", "", "Finnhub Token")
 	testMode     = flag.Bool("test", false, "Run in test mode")
+	fetchCandles = flag.Bool("candles", true, "Fetch candles for single stock requests")
 
 	ctx context.Context
 
-	finnhubClient *finnhub.DefaultApiService
-	geminiClient  *http.Client
+	finnhubClient  *finnhub.DefaultApiService
+	geminiClient   *http.Client
+	cloudRunClient *http.Client
 
 	botPrefixes = []string{"!stonks", "!stnosk", "!stonsk"}
 )
@@ -76,6 +78,10 @@ func main() {
 		Timeout: time.Second * 30,
 	}
 	cryptolib.FetchPriceFeeds(geminiClient)
+
+	cloudRunClient = &http.Client{
+		Timeout: time.Second * 30,
+	}
 
 	discordClient, err := discordgo.New("Bot " + *discordToken)
 	if err != nil {
@@ -302,6 +308,17 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					statuszlib.RecordError()
 					return
 				}
+				if *fetchCandles && len(tickers) == 1 {
+					chartUrl, err := stocklib.GetCandleGraphForStockAsset(ctx, finnhubClient, cloudRunClient, ticker)
+					if err != nil {
+						msg := fmt.Sprintf("Failed to get quote for crypto candles: %q (See logs)", ticker)
+						log.Printf("%s: %v", msg, err)
+						messagelib.SendMessage(s, m.ChannelID, msg)
+						statuszlib.RecordError()
+						return
+					}
+					tickerValue.ChartUrl = chartUrl
+				}
 				tickerValueChan <- tickerValue
 			case crypto:
 				tickerValue, err := cryptolib.GetQuoteForCryptoAsset(geminiClient, ticker)
@@ -311,6 +328,17 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					messagelib.SendMessage(s, m.ChannelID, msg)
 					statuszlib.RecordError()
 					return
+				}
+				if *fetchCandles && len(tickers) == 1 {
+					chartUrl, err := cryptolib.GetCandleGraphForCryptoAsset(geminiClient, cloudRunClient, ticker)
+					if err != nil {
+						msg := fmt.Sprintf("Failed to get quote for crypto candles: %q (See logs)", ticker)
+						log.Printf("%s: %v", msg, err)
+						messagelib.SendMessage(s, m.ChannelID, msg)
+						statuszlib.RecordError()
+						return
+					}
+					tickerValue.ChartUrl = chartUrl
 				}
 				tickerValueChan <- tickerValue
 			}

@@ -48,7 +48,7 @@ jobs:
         credentials: ${{secrets.GKE_SA_KEY}}
         service: ${{env.IMAGE}}-service
         image: gcr.io/${{env.PROJECT_ID}}/${{env.IMAGE}}:${{github.sha}}
-        env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}}
+        env_vars: DISCORD_KEY_PATH=${{secrets.DISCORD_KEY_PATH}},FINNHUB_KEY_PATH=${{secrets.FINNHUB_KEY_PATH}},GET_CRYPTO_CANDLE_GRAPH_URL=${{secrets.GET_CRYPTO_CANDLE_GRAPH_URL}},GET_STOCK_CANDLE_GRAPH_URL=${{secrets.GET_STOCK_CANDLE_GRAPH_URL}}
 
     - name: Show Output
       run: echo ${{steps.deploy.outputs.url}}

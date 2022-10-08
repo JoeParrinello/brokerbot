@@ -221,7 +221,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 				return
 			}
-			alias, err := firestorelib.GetAlias(ctx, splitMsg[3])
+			alias, err := firestorelib.GetAlias(ctx, strings.ToUpper(splitMsg[3]))
 			if err != nil {
 				msg := fmt.Sprintf("failed to get alias: %v", err)
 				log.Println(msg)
@@ -238,14 +238,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 				return
 			}
-			if err := firestorelib.CreateAlias(ctx, splitMsg[3], splitMsg[4:]); err != nil {
+			if err := firestorelib.CreateAlias(ctx, strings.ToUpper(splitMsg[3]), messagelib.CanonicalizeMessage(splitMsg[4:])); err != nil {
 				msg := fmt.Sprintf("failed to create alias: %v", err)
 				log.Println(msg)
 				messagelib.SendMessage(s, m.ChannelID, msg)
 				statuszlib.RecordError()
 				return
 			}
-			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Created alias %q", splitMsg[3]))
+			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Created alias %q", strings.ToUpper(splitMsg[3])))
 			statuszlib.RecordSuccess()
 			return
 		case "delete":
@@ -254,14 +254,14 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				messagelib.SendMessage(s, m.ChannelID, getHelpMessage())
 				return
 			}
-			if err := firestorelib.DeleteAlias(ctx, splitMsg[3]); err != nil {
+			if err := firestorelib.DeleteAlias(ctx, strings.ToUpper(splitMsg[3])); err != nil {
 				msg := fmt.Sprintf("failed to delete alias: %v", err)
 				log.Println(msg)
 				messagelib.SendMessage(s, m.ChannelID, msg)
 				statuszlib.RecordError()
 				return
 			}
-			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Deleted alias %q", splitMsg[3]))
+			messagelib.SendMessage(s, m.ChannelID, fmt.Sprintf("Deleted alias %q", strings.ToUpper(splitMsg[3])))
 			statuszlib.RecordSuccess()
 			return
 		}

@@ -311,13 +311,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				if *fetchCandles && len(tickers) == 1 {
 					chartUrl, err := stocklib.GetCandleGraphForStockAsset(ctx, finnhubClient, cloudRunClient, ticker)
 					if err != nil {
-						msg := fmt.Sprintf("Failed to get quote for crypto candles: %q (See logs)", ticker)
+						msg := fmt.Sprintf("Failed to get graph for stock candles: %q (See logs)", ticker)
 						log.Printf("%s: %v", msg, err)
-						messagelib.SendMessage(s, m.ChannelID, msg)
 						statuszlib.RecordError()
-						return
+						tickerValue.ChartUrl = ""
+					} else {
+						tickerValue.ChartUrl = chartUrl
 					}
-					tickerValue.ChartUrl = chartUrl
 				}
 				tickerValueChan <- tickerValue
 			case crypto:
@@ -332,13 +332,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 				if *fetchCandles && len(tickers) == 1 {
 					chartUrl, err := cryptolib.GetCandleGraphForCryptoAsset(geminiClient, cloudRunClient, ticker)
 					if err != nil {
-						msg := fmt.Sprintf("Failed to get quote for crypto candles: %q (See logs)", ticker)
+						msg := fmt.Sprintf("Failed to get graph for crypto candles: %q (See logs)", ticker)
 						log.Printf("%s: %v", msg, err)
-						messagelib.SendMessage(s, m.ChannelID, msg)
 						statuszlib.RecordError()
-						return
+						tickerValue.ChartUrl = ""
+					} else {
+						tickerValue.ChartUrl = chartUrl
 					}
-					tickerValue.ChartUrl = chartUrl
 				}
 				tickerValueChan <- tickerValue
 			}

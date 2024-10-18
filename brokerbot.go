@@ -32,7 +32,9 @@ var (
 	discordToken = flag.String("t", "", "Discord Token")
 	finnhubToken = flag.String("finnhub", "", "Finnhub Token")
 	testMode     = flag.Bool("test", false, "Run in test mode")
-	fetchCandles = flag.Bool("candles", true, "Fetch candles for single stock requests")
+	fetchCandles = flag.Bool("candles", false, "Fetch candles for single stock requests. Deprecated.")
+fetchStockCandles = flag.Bool("stockCandles", false, "Fetch candles for single stock requests")
+fetchCryptoCandles = flag.Bool("cryptoCandles", true, "Fetch candles for single crypto requests")
 
 	ctx context.Context
 
@@ -308,7 +310,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					statuszlib.RecordError()
 					return
 				}
-				if *fetchCandles && len(tickers) == 1 {
+				if *fetchStockCandles && len(tickers) == 1 {
 					chartUrl, err := stocklib.GetCandleGraphForStockAsset(ctx, finnhubClient, cloudRunClient, ticker)
 					if err != nil {
 						msg := fmt.Sprintf("Failed to get graph for stock candles: %q (See logs)", ticker)
@@ -329,7 +331,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					statuszlib.RecordError()
 					return
 				}
-				if *fetchCandles && len(tickers) == 1 {
+				if *fetchCryptoCandles && len(tickers) == 1 {
 					chartUrl, err := cryptolib.GetCandleGraphForCryptoAsset(geminiClient, cloudRunClient, ticker)
 					if err != nil {
 						msg := fmt.Sprintf("Failed to get graph for crypto candles: %q (See logs)", ticker)

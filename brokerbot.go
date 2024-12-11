@@ -29,18 +29,20 @@ var (
 	buildVersion string = "dev" // sha1 revision used to build the program
 	buildTime    string = "0"   // when the executable was built
 
-	discordToken = flag.String("t", "", "Discord Token")
-	finnhubToken = flag.String("finnhub", "", "Finnhub Token")
-	testMode     = flag.Bool("test", false, "Run in test mode")
-	fetchCandles = flag.Bool("candles", false, "Fetch candles for single stock requests. Deprecated.")
-fetchStockCandles = flag.Bool("stockCandles", false, "Fetch candles for single stock requests")
-fetchCryptoCandles = flag.Bool("cryptoCandles", true, "Fetch candles for single crypto requests")
+	discordToken       = flag.String("t", "", "Discord Token")
+	finnhubToken       = flag.String("finnhub", "", "Finnhub Token")
+	twelveDataToken    = flag.String("twelve", "", "TwelveData Token")
+	testMode           = flag.Bool("test", false, "Run in test mode")
+	fetchCandles       = flag.Bool("candles", false, "Fetch candles for single stock requests. Deprecated.")
+	fetchStockCandles  = flag.Bool("stockCandles", false, "Fetch candles for single stock requests")
+	fetchCryptoCandles = flag.Bool("cryptoCandles", true, "Fetch candles for single crypto requests")
 
 	ctx context.Context
 
-	finnhubClient  *finnhub.DefaultApiService
-	geminiClient   *http.Client
-	cloudRunClient *http.Client
+	finnhubClient    *finnhub.DefaultApiService
+	geminiClient     *http.Client
+	cloudRunClient   *http.Client
+	twelveDataClient *http.Client
 
 	botPrefixes = []string{"!stonks", "!stnosk", "!stonsk"}
 )
@@ -82,6 +84,10 @@ func main() {
 	cryptolib.FetchPriceFeeds(geminiClient)
 
 	cloudRunClient = &http.Client{
+		Timeout: time.Second * 30,
+	}
+
+	twelveDataClient = &http.Client{
 		Timeout: time.Second * 30,
 	}
 
@@ -146,14 +152,14 @@ func main() {
 }
 
 func initTokens() {
-	if *discordToken != "" && *finnhubToken != "" {
+	if *discordToken != "" && *finnhubToken != "" && *twelveDataToken != "" {
 		return
 	}
 
 	log.SetFlags(0) // Disable timestamps when using Cloud Logging.
 
 	var ok bool
-	ok, *finnhubToken, *discordToken = secretlib.GetSecrets()
+	ok, *finnhubToken, *discordToken, *twelveDataToken = secretlib.GetSecrets()
 	if !ok {
 		log.Fatalf("API tokens not found in ENV, aborting...")
 	}
@@ -311,7 +317,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 					return
 				}
 				if *fetchStockCandles && len(tickers) == 1 {
-					chartUrl, err := stocklib.GetCandleGraphForStockAsset(ctx, finnhubClient, cloudRunClient, ticker)
+					chartUrl, err := stocklib.GetCandleGraphForStockAsset(ctx, twelveDataClient, cloudRunClient, ticker)
 					if err != nil {
 						msg := fmt.Sprintf("Failed to get graph for stock candles: %q (See logs)", ticker)
 						log.Printf("%s: %v", msg, err)

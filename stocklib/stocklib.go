@@ -46,7 +46,7 @@ func GetQuoteForStockTicker(ctx context.Context, f *finnhub.DefaultApiService, t
 	}, nil
 }
 
-func GetCandleGraphForStockAsset(ctx context.Context, f *finnhub.DefaultApiService, cloudRunClient *http.Client, ticker string) (string, error) {
+func GetCandleGraphForStockAsset(ctx context.Context, twelveDataClient *twelveDataClient, cloudRunClient *http.Client, ticker string) (string, error) {
 	now := time.Now()
 	candles, _, err := f.StockCandles(ctx, ticker, "15", now.Add(time.Hour*-24*7).Unix(), now.Unix(), &finnhub.StockCandlesOpts{})
 	if err != nil {
